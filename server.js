@@ -126,15 +126,29 @@ function determineBestContactChannel(hasPhone, isMobile, hasInstagram, hasWebsit
   return 'maps';                              // Prioridade 5: Perfil no Maps / Presencial
 }
 
-// Calculate Score
+// Calculate Opportunity Score for Prospecting
 function calculateLeadScore(hasPhone, hasWebsite, hasInstagram, rating, reviewCount) {
-  let score = 45;
-  if (hasPhone) score += 25;
-  if (hasWebsite) score += 15;
+  let score = 40;
+  // High reputation = strong business with paying capacity
+  if (rating >= 4.8) score += 15;
+  else if (rating >= 4.5) score += 10;
+  else if (rating >= 4.0) score += 5;
+
+  // Active customer flow (Reviews volume)
+  if (reviewCount >= 100) score += 15;
+  else if (reviewCount >= 50) score += 10;
+  else if (reviewCount >= 20) score += 5;
+
+  // Contact viability
+  if (hasPhone) score += 15;
   if (hasInstagram) score += 10;
-  if (rating >= 4.8) score += 10;
-  else if (rating >= 4.5) score += 5;
-  if (reviewCount >= 50) score += 5;
+
+  // Sales Opportunity:
+  // Sem site: Alta urgência e oportunidade para venda de Site & Landing Page (+15)
+  // Com site: Oportunidade para tráfego pago, SEO e anúncios (+10)
+  if (!hasWebsite) score += 15;
+  else score += 10;
+
   return Math.min(Math.max(score, 50), 99);
 }
 
@@ -292,7 +306,10 @@ function mapGoogleScraperRecord(item, customNiche = 'Geral') {
     city = 'Bela Vista, São Paulo - SP';
   } else if (addressVal) {
     const parts = addressVal.split(',');
-    city = parts.length > 1 ? parts[parts.length - 1].trim() : addressVal;
+    const candidate = parts.length > 1 ? parts[parts.length - 1].trim() : addressVal.trim();
+    if (candidate && !/^\d+$/.test(candidate)) {
+      city = candidate;
+    }
   }
 
   const phoneData = formatPhoneNumber(phoneVal);

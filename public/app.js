@@ -328,6 +328,11 @@ function filterByTab(tab) {
   document.querySelectorAll('.crm-tab').forEach(b => {
     b.classList.toggle('active', b.getAttribute('data-tab') === tab);
   });
+
+  // Reset dropdown filters so clicking the tab displays all leads in this stage
+  const scoreSelect = document.getElementById('filter-score-select');
+  if (scoreSelect) scoreSelect.value = 'all';
+
   applyLeadsFilters();
 }
 
@@ -337,6 +342,31 @@ function filterBySmartTab(tab) {
   document.querySelectorAll('.smart-tab').forEach(b => {
     b.classList.toggle('active', b.getAttribute('data-smart') === tab);
   });
+
+  // Reset dropdown filters so clicking the smart tab displays all leads in that category!
+  const scoreSelect = document.getElementById('filter-score-select');
+  if (scoreSelect) scoreSelect.value = 'all';
+
+  const statusSelect = document.getElementById('filter-status-select');
+  if (statusSelect) statusSelect.value = 'all';
+
+  applyLeadsFilters();
+}
+
+// RESET ALL FILTERS
+function resetAllFilters() {
+  const searchInput = document.getElementById('search-leads-input');
+  if (searchInput) searchInput.value = '';
+
+  const scoreSelect = document.getElementById('filter-score-select');
+  if (scoreSelect) scoreSelect.value = 'all';
+
+  const statusSelect = document.getElementById('filter-status-select');
+  if (statusSelect) statusSelect.value = 'all';
+
+  presenceFilter = null;
+  document.querySelectorAll('.presence-chip').forEach(b => b.classList.remove('active'));
+
   applyLeadsFilters();
 }
 
@@ -366,7 +396,8 @@ function applyLeadsFilters() {
   const scoreFilter = document.getElementById('filter-score-select').value;
   const statusFilter = document.getElementById('filter-status-select').value;
 
-  filteredLeads = allLeads.filter(lead => {
+  // Count total leads in current active tab (baseline)
+  const tabLeads = allLeads.filter(lead => {
     // 1. Pipeline Tab Filter
     if (crmActiveTab === 'ativos' && lead.status === 'Arquivado') return false;
     if (crmActiveTab === 'qualificados' && lead.status !== 'Qualificado') return false;
@@ -382,13 +413,17 @@ function applyLeadsFilters() {
     if (smartActiveTab === 'viavel_whatsapp' && lead.bestContactChannel !== 'whatsapp') return false;
     if (smartActiveTab === 'viavel_instagram' && lead.bestContactChannel !== 'instagram') return false;
 
+    return true;
+  });
+
+  filteredLeads = tabLeads.filter(lead => {
     // 3. Status Dropdown
     if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
 
-    // 4. Score Dropdown
-    if (scoreFilter === 'high' && lead.score < 95) return false;
-    if (scoreFilter === 'medium' && (lead.score < 90 || lead.score >= 95)) return false;
-    if (scoreFilter === 'low' && lead.score >= 90) return false;
+    // 4. Score Dropdown (85+ Alta Prioridade, 70-84 Boa Oportunidade, < 70 Inicial)
+    if (scoreFilter === 'high' && (lead.score || 0) < 85) return false;
+    if (scoreFilter === 'medium' && ((lead.score || 0) < 70 || (lead.score || 0) >= 85)) return false;
+    if (scoreFilter === 'low' && (lead.score || 0) >= 70) return false;
 
     // 5. Presence Filter Chips
     if (presenceFilter === 'phone' && !lead.hasPhone) return false;
@@ -431,7 +466,11 @@ function applyLeadsFilters() {
   const withIg = filteredLeads.filter(l => l.hasInstagram).length;
   const hintEl = document.getElementById('presence-count-hint');
   if (hintEl) {
-    hintEl.innerText = `${filteredLeads.length} leads (${withPhone} c/ tel, ${withSite} c/ site, ${withIg} c/ IG)`;
+    if (filteredLeads.length < tabLeads.length) {
+      hintEl.innerHTML = `<span style="color:#facc15;font-weight:600;"><i class="fa-solid fa-filter"></i> Exibindo ${filteredLeads.length} de ${tabLeads.length} leads</span> <button class="btn-clear-filter-sm" onclick="resetAllFilters()" style="margin-left:8px;background:#1e293b;border:1px solid #334155;color:#93c5fd;border-radius:12px;padding:3px 8px;font-size:0.74rem;cursor:pointer;">Limpar Filtros</button>`;
+    } else {
+      hintEl.innerText = `${filteredLeads.length} leads (${withPhone} c/ tel, ${withSite} c/ site, ${withIg} c/ IG)`;
+    }
   }
 
   renderTable(filteredLeads);
