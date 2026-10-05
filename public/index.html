@@ -89,6 +89,11 @@
       <header class="top-header">
         <h1 class="page-title" id="page-title-display">Buscar Leads</h1>
         <div class="header-right">
+          <div class="session-header-badge" onclick="openSessionsModal()" title="Gerenciar ou alternar sessões salvas">
+            <i class="fa-solid fa-folder-open text-blue"></i>
+            <span>Sessão: <strong id="header-active-session-name">Academias - Taubaté SP</strong></span>
+            <i class="fa-solid fa-chevron-down session-caret"></i>
+          </div>
           <button class="btn-header-action" onclick="openUploadModal()">
             <i class="fa-solid fa-file-arrow-up"></i> Upload Google Maps
           </button>
@@ -296,11 +301,17 @@
 
           <!-- DATA MANAGEMENT BUTTONS -->
           <div class="toolbar-buttons">
-            <button class="btn-scan-instagram" id="btn-quick-scan-ig" onclick="startInstagramQuickScan()" title="Buscar perfis no Instagram e WhatsApp via DuckDuckGo">
+            <button class="btn-scan-instagram" id="btn-quick-scan-ig" onclick="startInstagramQuickScan()" title="Buscar perfis no Instagram e WhatsApp via DuckDuckGo e Web">
               <i class="fa-brands fa-instagram"></i> ⚡ Varredura Instagram
             </button>
             <button class="btn-primary-highlight" onclick="openUploadModal()">
               <i class="fa-solid fa-cloud-arrow-up"></i> Upload Google
+            </button>
+            <button class="btn-secondary" onclick="openSaveSessionPrompt()" title="Salvar análise de dados atual como uma sessão isolada">
+              <i class="fa-solid fa-floppy-disk text-blue"></i> Salvar Sessão
+            </button>
+            <button class="btn-secondary" onclick="openSessionsModal()" title="Gerenciar e alternar sessões salvas">
+              <i class="fa-solid fa-folder-tree"></i> Minhas Sessões
             </button>
             <button class="btn-secondary" onclick="openNewLeadModal()">
               <i class="fa-solid fa-plus"></i> Novo Lead
@@ -316,8 +327,10 @@
                 <i class="fa-solid fa-download"></i> Exportar <i class="fa-solid fa-chevron-down" style="font-size:0.7rem"></i>
               </button>
               <div class="export-dropdown hidden" id="export-dropdown">
-                <a href="/api/export-csv" download><i class="fa-solid fa-file-csv"></i> Exportar CSV</a>
-                <a href="/api/export-json" download><i class="fa-solid fa-file-code"></i> Exportar JSON</a>
+                <a href="/api/export-csv" download><i class="fa-solid fa-file-csv"></i> Exportar Leads (CSV)</a>
+                <a href="/api/export-json" download><i class="fa-solid fa-file-code"></i> Exportar Leads (JSON)</a>
+                <a href="javascript:void(0)" onclick="exportCurrentSessionFile('csv')"><i class="fa-solid fa-file-arrow-down"></i> Exportar Sessão Atual (CSV)</a>
+                <a href="javascript:void(0)" onclick="exportCurrentSessionFile('json')"><i class="fa-solid fa-file-arrow-down"></i> Exportar Sessão Atual (JSON)</a>
               </div>
             </div>
           </div>
@@ -799,6 +812,54 @@
       <div class="modal-footer flex-between">
         <button class="btn-secondary" onclick="closeSettingsModal()">Fechar</button>
         <span class="author-credits-sm">Kaptar v5.3 • Raphael Lima</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SESSIONS & CAMPAIGNS MODAL -->
+  <div id="sessions-modal" class="modal-backdrop hidden">
+    <div class="modal-card modal-lg">
+      <div class="modal-header flex-between">
+        <div class="modal-title-wrap">
+          <i class="fa-solid fa-folder-tree" style="font-size:1.4rem; color: #3b82f6;"></i>
+          <div>
+            <h3>Gerenciamento de Sessões & Campanhas</h3>
+            <p>Salve e alterne entre prospecções de diferentes nichos (ex: Dentistas, Academias) sem misturar os dados.</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" onclick="closeSessionsModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body" style="gap:20px;">
+        <!-- SAVE CURRENT AS SESSION -->
+        <div class="session-save-card">
+          <div class="session-save-header flex-between">
+            <strong><i class="fa-solid fa-floppy-disk text-blue"></i> Salvar Base Atual como Nova Sessão</strong>
+            <span class="session-leads-badge"><span id="session-current-leads-count">0</span> leads ativos</span>
+          </div>
+          <div class="session-save-inputs">
+            <input type="text" id="new-session-name-input" class="styled-input" placeholder="Nome da Sessão (Ex: Academias - Taubaté SP ou Dentistas - Bela Vista)">
+            <button class="btn-primary-highlight" onclick="saveCurrentAsSession()">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Salvar Sessão
+            </button>
+          </div>
+        </div>
+
+        <!-- SAVED SESSIONS LIST -->
+        <div class="sessions-list-wrapper">
+          <div class="flex-between" style="margin-bottom:12px;">
+            <strong style="font-size:0.9rem; color:#cbd5e1;"><i class="fa-solid fa-database"></i> Sessões Salvas no Banco Local</strong>
+            <button class="btn-inline-text" onclick="loadSessionsList()"><i class="fa-solid fa-arrows-rotate"></i> Atualizar Lista</button>
+          </div>
+          <div id="sessions-list-container" class="sessions-cards-grid">
+            <!-- Dynamic session items will be rendered here -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer flex-between">
+        <button class="btn-secondary" onclick="closeSessionsModal()">Fechar</button>
+        <span class="author-credits-sm">Sessões salvas em <code>data/sessions.json</code></span>
       </div>
     </div>
   </div>

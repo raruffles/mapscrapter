@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initMap();
   loadLeads();
   renderSelectedNiches();
+  fetchActiveSessionInfo();
 });
 
 // Switch Main Page
@@ -555,7 +556,7 @@ function renderTable(leads) {
       <td>
         <div class="phone-cell">
           <span>${phoneDisplay}</span>
-          ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" class="presence-icon-link" title="Abrir conversa no WhatsApp"><i class="fa-brands fa-whatsapp text-green"></i></a>` : ''}
+          ${waNumber ? `<a href="https://wa.me/${waNumber}?text=${encodeURIComponent('Olá, tudo bem? Dei uma olhada no google e instagram e gostei do projeto de vocês')}" target="_blank" class="presence-icon-link" title="Abrir conversa no WhatsApp com mensagem padrão"><i class="fa-brands fa-whatsapp text-green"></i></a>` : ''}
           <button class="btn-inline-edit" onclick="navigator.clipboard.writeText('${phoneDisplay}'); showToast('Telefone copiado!');" title="Copiar telefone"><i class="fa-regular fa-copy"></i></button>
         </div>
       </td>
@@ -1144,7 +1145,9 @@ function copyWhatsAppMessage() {
 }
 
 function openDirectWhatsApp() {
-  const text = document.getElementById('whatsapp-message-text').value;
+  const defaultMsg = 'Olá, tudo bem? Dei uma olhada no google e instagram e gostei do projeto de vocês';
+  const textVal = document.getElementById('whatsapp-message-text') ? document.getElementById('whatsapp-message-text').value.trim() : '';
+  const text = textVal || defaultMsg;
   const rawPhone = currentLeadForWhatsApp.rawPhone || (currentLeadForWhatsApp.phone ? currentLeadForWhatsApp.phone.replace(/\D/g, '') : '');
 
   let fullPhone = rawPhone;
@@ -1342,6 +1345,232 @@ async function syncLeadsToSupabase() {
       btn.disabled = false;
       btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar Leads para Supabase`;
     }
+  }
+// ==========================================
+// SESSIONS & CAMPAIGNS (SALVAR / EXPORTAR SEÇÕES)
+// ==========================================
+let activeSessionMeta = { id: null, name: 'Academias - Taubaté SP' };
+let allSavedSessions = [];
+
+async function fetchActiveSessionInfo() {
+  try {
+    const res = await fetch('/api/sessions');
+    if (res.ok) {
+      const data = await res.json();
+      allSavedSessions = data.sessions || [];
+      if (data.activeSession && data.activeSession.name) {
+        activeSessionMeta = data.activeSession;
+        updateActiveSessionHeaderUI();
+      }
+    }
+  } catch (e) {
+    console.warn('Erro ao carregar info de sessão:', e);
+  }
+}
+
+function updateActiveSessionHeaderUI() {
+  const label = document.getElementById('header-active-session-name');
+  if (label) {
+    label.innerText = activeSessionMeta.name || 'Geral';
+  }
+}
+
+function openSessionsModal() {
+  const modal = document.getElementById('sessions-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+
+  const countEl = document.getElementById('session-current-leads-count');
+  if (countEl) countEl.innerText = allLeads.length;
+
+  const input = document.getElementById('new-session-name-input');
+  if (input) {
+    if (allLeads.length > 0) {
+      const firstNiche = allLeads[0].niche || 'Prospecção';
+      const firstCity = allLeads[0].city ? allLeads[0].city.split(',')[0].trim() : 'Local';
+      input.value = `${firstNiche} - ${firstCity} (${allLeads.length} leads)`;
+    } else {
+      input.value = 'Nova Campanha';
+    }
+  }
+
+  loadSessionsList();
+}
+
+function closeSessionsModal() {
+  const modal = document.getElementById('sessions-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function openSaveSessionPrompt() {
+  openSessionsModal();
+  const input = document.getElementById('new-session-name-input');
+  if (input) {
+    input.focus();
+    input.select();
+  }
+}
+
+async function loadSessionsList() {
+  const container = document.getElementById('sessions-list-container');
+  if (!container) return;
+
+  container.innerHTML = `<div style="text-align:center; padding:20px; color:#94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Carregando sessões salvas...</div>`;
+
+  try {
+    const res = await fetch('/api/sessions');
+    const data = await res.json();
+    allSavedSessions = data.sessions || [];
+    if (data.activeSession) activeSessionMeta = data.activeSession;
+    updateActiveSessionHeaderUI();
+
+    if (allSavedSessions.length === 0) {
+      container.innerHTML = `
+        <div style="text-align:center; padding:30px 15px; color:#64748b; background:#0c1017; border-radius:8px;">
+          <i class="fa-regular fa-folder-open" style="font-size:2rem; margin-bottom:8px; opacity:0.4;"></i>
+          <p>Nenhuma sessão salva ainda.</p>
+          <span style="font-size:0.75rem;">Digite um nome acima e clique em "Salvar Sessão" para guardar os leads atuais.</span>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = '';
+    allSavedSessions.forEach(sess => {
+      const isCurrentActive = activeSessionMeta && activeSessionMeta.id === sess.id;
+      const card = document.createElement('div');
+      card.className = `session-item-card ${isCurrentActive ? 'active-session' : ''}`;
+
+      const dateStr = sess.updatedAt ? new Date(sess.updatedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Recente';
+
+      card.innerHTML = `
+        <div class="session-info-left">
+          <div class="session-title-line">
+            <span class="session-item-name">${sess.name}</span>
+            ${isCurrentActive ? '<span class="session-active-pill"><i class="fa-solid fa-check"></i> Ativa</span>' : ''}
+          </div>
+          <div class="session-meta-line">
+            <span><i class="fa-solid fa-tag text-blue"></i> ${sess.niche || 'Geral'}</span>
+            <span><i class="fa-solid fa-location-dot text-yellow"></i> ${sess.city || 'Taubaté - SP'}</span>
+            <span><i class="fa-solid fa-users text-green"></i> <strong>${sess.leadCount}</strong> leads</span>
+            <span><i class="fa-regular fa-clock"></i> ${dateStr}</span>
+          </div>
+        </div>
+        <div class="session-actions-right">
+          ${!isCurrentActive ? `
+            <button class="btn-session-load" onclick="loadSessionById('${sess.id}')" title="Carregar esta sessão no CRM">
+              <i class="fa-solid fa-play"></i> Carregar
+            </button>
+          ` : `
+            <button class="btn-session-action" onclick="saveCurrentAsSession('${sess.id}', '${sess.name.replace(/'/g, "\\'")}')" title="Atualizar dados desta sessão ativa">
+              <i class="fa-solid fa-rotate text-blue"></i> Atualizar
+            </button>
+          `}
+          <button class="btn-session-action" onclick="exportSessionById('${sess.id}', 'csv')" title="Baixar planilha CSV desta sessão">
+            <i class="fa-solid fa-file-csv"></i> CSV
+          </button>
+          <button class="btn-session-action" onclick="exportSessionById('${sess.id}', 'json')" title="Baixar arquivo JSON desta sessão">
+            <i class="fa-solid fa-file-code"></i> JSON
+          </button>
+          <button class="btn-session-action delete-btn" onclick="deleteSessionById('${sess.id}', '${sess.name.replace(/'/g, "\\'")}')" title="Excluir sessão">
+            <i class="fa-regular fa-trash-can"></i>
+          </button>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  } catch (err) {
+    container.innerHTML = `<div style="color:#ef4444; padding:15px;">Erro ao carregar sessões: ${err.message}</div>`;
+  }
+}
+
+async function saveCurrentAsSession(existingId = null, existingName = null) {
+  const input = document.getElementById('new-session-name-input');
+  const name = existingName || (input ? input.value.trim() : '');
+
+  if (!name) {
+    showToast('Informe um nome para a sessão (ex: Academias Taubaté).');
+    return;
+  }
+
+  const niche = allLeads[0] ? allLeads[0].niche : 'Geral';
+  const city = allLeads[0] ? allLeads[0].city : 'Taubaté - SP';
+
+  try {
+    const res = await fetch('/api/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: existingId,
+        name,
+        niche,
+        city
+      })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      activeSessionMeta = data.session;
+      updateActiveSessionHeaderUI();
+      showToast(`💾 Sessão "${data.session.name}" salva com sucesso! (${allLeads.length} leads)`);
+      loadSessionsList();
+    } else {
+      showToast('Erro ao salvar sessão: ' + (data.error || 'Erro desconhecido'));
+    }
+  } catch (e) {
+    showToast('Erro de conexão ao salvar sessão: ' + e.message);
+  }
+}
+
+async function loadSessionById(id) {
+  try {
+    showToast('Carregando sessão selecionada...');
+    const res = await fetch(`/api/sessions/${id}/load`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      activeSessionMeta = data.session;
+      updateActiveSessionHeaderUI();
+      allLeads = data.leads || [];
+      selectedLeadIds.clear();
+      applyFiltersAndRender();
+      updateSmartCounters();
+      closeSessionsModal();
+      showToast(`🚀 Sessão "${data.session.name}" carregada! (${data.leadCount} leads)`);
+    } else {
+      showToast('Erro ao carregar sessão: ' + (data.error || 'Erro desconhecido'));
+    }
+  } catch (e) {
+    showToast('Erro ao carregar sessão: ' + e.message);
+  }
+}
+
+async function deleteSessionById(id, name) {
+  if (!confirm(`Tem certeza que deseja excluir a sessão "${name}"? Os leads dela serão removidos do histórico de sessões.`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      showToast(`🗑️ Sessão "${name}" excluída.`);
+      loadSessionsList();
+    } else {
+      showToast('Erro ao excluir sessão.');
+    }
+  } catch (e) {
+    showToast('Erro ao excluir sessão: ' + e.message);
+  }
+}
+
+function exportSessionById(id, format) {
+  window.location.href = `/api/sessions/${id}/export-${format}`;
+}
+
+function exportCurrentSessionFile(format) {
+  if (activeSessionMeta && activeSessionMeta.id) {
+    window.location.href = `/api/sessions/${activeSessionMeta.id}/export-${format}`;
+  } else {
+    window.location.href = `/api/export-${format}`;
   }
 }
 

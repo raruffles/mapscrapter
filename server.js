@@ -9,6 +9,8 @@ const DATA_DIR = path.join(__dirname, 'data');
 const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
 const DATA_FILE = path.join(DATA_DIR, 'leads.json');
 const SUPABASE_CONFIG_FILE = path.join(DATA_DIR, 'supabase_config.json');
+const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
+const ACTIVE_SESSION_FILE = path.join(DATA_DIR, 'active_session.json');
 
 // Ensure directories exist
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -18,6 +20,47 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Helper: Read sessions
+function getSessions() {
+  try {
+    if (!fs.existsSync(SESSIONS_FILE)) {
+      return [];
+    }
+    const raw = fs.readFileSync(SESSIONS_FILE, 'utf-8');
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error('Error reading sessions:', err);
+    return [];
+  }
+}
+
+// Helper: Save sessions
+function saveSessions(sessions) {
+  try {
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    console.error('Error saving sessions:', err);
+    return false;
+  }
+}
+
+// Helper: Active session metadata
+function getActiveSessionMeta() {
+  try {
+    if (fs.existsSync(ACTIVE_SESSION_FILE)) {
+      return JSON.parse(fs.readFileSync(ACTIVE_SESSION_FILE, 'utf-8'));
+    }
+  } catch (e) {}
+  return { id: null, name: 'Academias - Taubaté SP', niche: 'Academia', city: 'Taubaté - SP' };
+}
+
+function setActiveSessionMeta(meta) {
+  try {
+    fs.writeFileSync(ACTIVE_SESSION_FILE, JSON.stringify(meta, null, 2), 'utf-8');
+  } catch (e) {}
+}
 
 // Helper: Read leads
 function getLeads() {
@@ -289,8 +332,12 @@ function mapGoogleScraperRecord(item, customNiche = 'Geral') {
   // Website / Url
   const websiteRaw = findValue(['website', 'site', 'url', 'web', 'Site', 'Url']);
 
-  // Phone / Telefone
-  const phoneVal = findValue(['phone', 'telephone', 'phone_number', 'phoneNumber', 'telefone', 'contato', 'tel', 'contact_phone']);
+  // Phone / Telefone / WhatsApp mapping
+  let phoneVal = findValue([
+    'phone', 'telephone', 'phone_number', 'phoneNumber', 'telefone', 'contato', 'tel', 'contact_phone',
+    'celular', 'whatsapp', 'whats', 'zap', 'mobile', 'cel', 'tel_contato', 'phone1', 'telefone1',
+    'phone_1', 'telefone_1', 'fone', 'tel_fixo', 'telefone_fixo'
+  ]);
 
   // Instagram raw
   const instagramRaw = findValue(['instagram', 'instagram_url', 'insta', 'perfil_instagram']);
@@ -319,6 +366,29 @@ function mapGoogleScraperRecord(item, customNiche = 'Geral') {
   if (instagramRaw) {
     if (instagramRaw.startsWith('@')) instagram = instagramRaw;
     else checkUrl(instagramRaw);
+  }
+
+  // Deep Scan across all columns for phone numbers or WhatsApp links if not explicitly matched
+  for (const k of keys) {
+    const val = item[k];
+    if (val && typeof val === 'string') {
+      const trimmedVal = val.trim();
+      // Check for WhatsApp links
+      if (trimmedVal.includes('wa.me/') || trimmedVal.includes('api.whatsapp.com/send')) {
+        checkUrl(trimmedVal);
+        const waDigitsMatch = trimmedVal.match(/(?:wa\.me\/|phone=)(\d+)/i);
+        if (waDigitsMatch && !phoneVal) {
+          phoneVal = waDigitsMatch[1];
+        }
+      }
+      // Check if value itself looks like a phone number
+      if (!phoneVal && trimmedVal.length >= 8 && trimmedVal.length <= 25) {
+        const phoneRegex = /(?:\+?55\s?)?(?:\(?([1-9]{2})\)?\s?)(?:9\s?\d{4}[-\s]?\d{4}|\d{4}[-\s]?\d{4})/;
+        if (phoneRegex.test(trimmedVal) && !trimmedVal.includes('http') && !trimmedVal.includes('data=') && !trimmedVal.includes('@') && !trimmedVal.includes('·')) {
+          phoneVal = trimmedVal;
+        }
+      }
+    }
   }
 
   // City detection (e.g. Taubaté, Bela Vista, São Paulo)
@@ -793,14 +863,14 @@ app.post('/api/leads/google-sheets', async (req, res) => {
   }
 });
 
-// API: Quick Scan / Enrichment for Instagram & Contacts (DuckDuckGo Live Web Search)
+// API: Quick Scan / Enrichment for Instagram & Contacts (DuckDuckGo Live Web Search + Website Inspection)
 app.post('/api/leads/quick-scan', async (req, res) => {
   const { ids, limit = 15 } = req.body;
   const leads = getLeads();
   const idSet = Array.isArray(ids) && ids.length > 0 ? new Set(ids) : null;
 
-  // Filter candidates that need scan (missing instagram or website)
-  const candidates = leads.filter(l => (!idSet || idSet.has(l.id)) && (!l.hasInstagram || !l.hasWebsite));
+  // Filter candidates that need scan (missing phone, missing instagram or missing website)
+  const candidates = leads.filter(l => (!idSet || idSet.has(l.id)) && (!l.hasPhone || !l.hasInstagram || !l.hasWebsite));
   const targetLeads = idSet ? candidates : candidates.slice(0, Number(limit) || 15);
   console.log(`[QUICK SCAN] Iniciando varredura rápida para ${targetLeads.length} leads.`);
 
@@ -808,62 +878,145 @@ app.post('/api/leads/quick-scan', async (req, res) => {
 
   for (const lead of targetLeads) {
     try {
-      const cleanName = lead.name.replace(/[^a-zA-Z0-9\s]/g, '').trim();
-      const query = `${cleanName} ${lead.city || ''} instagram whatsapp`;
-      const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+      let foundSomething = false;
 
-      const response = await fetch(searchUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8'
-        }
-      });
+      // STEP 1: If lead already has a website, inspect the website directly for WhatsApp, Telefone and Instagram
+      if (lead.website && (!lead.hasPhone || !lead.hasInstagram)) {
+        try {
+          const siteRes = await fetch(lead.website, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            signal: AbortSignal.timeout(4500)
+          });
+          if (siteRes.ok) {
+            const siteHtml = await siteRes.text();
 
-      if (response.ok) {
-        const html = await response.text();
+            // WhatsApp link in website
+            if (!lead.hasPhone) {
+              const siteWa = siteHtml.match(/wa\.me\/(?:55)?(\d{10,11})/i) || siteHtml.match(/api\.whatsapp\.com\/send\?phone=(?:55)?(\d{10,11})/i);
+              if (siteWa) {
+                const raw = siteWa[1];
+                lead.rawPhone = raw;
+                const pData = formatPhoneNumber(raw);
+                lead.phone = pData.formatted;
+                lead.isMobile = true;
+                lead.hasPhone = true;
+                lead.whatsappLink = `https://wa.me/${raw.startsWith('55') ? raw : '55' + raw}`;
+                foundSomething = true;
+              } else {
+                // Check tel: link
+                const siteTel = siteHtml.match(/href=["']tel:([^"']+)["']/i);
+                if (siteTel) {
+                  const pData = formatPhoneNumber(siteTel[1]);
+                  if (pData.raw && pData.raw.length >= 10) {
+                    lead.phone = pData.formatted;
+                    lead.rawPhone = pData.raw;
+                    lead.isMobile = pData.isMobile;
+                    lead.hasPhone = true;
+                    foundSomething = true;
+                  }
+                }
+              }
+            }
 
-        // 1. Look for Instagram handle
-        if (!lead.instagram) {
-          const instaMatch = html.match(/instagram\.com\/([a-zA-Z0-9_\.]{3,30})/i);
-          if (instaMatch && !['p', 'explore', 'reels', 'stories'].includes(instaMatch[1].toLowerCase())) {
-            lead.instagram = '@' + instaMatch[1];
-            lead.hasInstagram = true;
+            // Instagram in website
+            if (!lead.instagram) {
+              const siteInsta = siteHtml.match(/instagram\.com\/([a-zA-Z0-9_\.]{3,30})/i);
+              if (siteInsta && !['p', 'explore', 'reels', 'stories'].includes(siteInsta[1].toLowerCase())) {
+                lead.instagram = '@' + siteInsta[1];
+                lead.hasInstagram = true;
+                foundSomething = true;
+              }
+            }
           }
+        } catch (siteErr) {
+          // ignore site timeout / ssl errors
         }
+      }
 
-        // 2. Look for WhatsApp link
-        if (!lead.rawPhone) {
-          const waMatch = html.match(/wa\.me\/(55\d{10,11})/i) || html.match(/api\.whatsapp\.com\/send\?phone=(55\d{10,11})/i);
-          if (waMatch) {
-            const raw = waMatch[1];
-            lead.rawPhone = raw;
-            const phoneData = formatPhoneNumber(raw);
-            lead.phone = phoneData.formatted;
-            lead.isMobile = true;
-            lead.hasPhone = true;
+      // STEP 2: DuckDuckGo Search for missing phone, whatsapp, instagram, or site
+      if (!lead.hasPhone || !lead.hasInstagram || !lead.hasWebsite) {
+        const cleanName = lead.name.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+        const query = `${cleanName} ${lead.city || ''} telefone whatsapp instagram`;
+        const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+
+        const response = await fetch(searchUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8'
+          },
+          signal: AbortSignal.timeout(6000)
+        });
+
+        if (response.ok) {
+          const html = await response.text();
+
+          // 1. Look for Instagram handle
+          if (!lead.instagram) {
+            const instaMatch = html.match(/instagram\.com\/([a-zA-Z0-9_\.]{3,30})/i);
+            if (instaMatch && !['p', 'explore', 'reels', 'stories'].includes(instaMatch[1].toLowerCase())) {
+              lead.instagram = '@' + instaMatch[1];
+              lead.hasInstagram = true;
+              foundSomething = true;
+            }
           }
-        }
 
-        // 3. Look for regular website
-        if (!lead.website) {
-          const siteMatches = html.matchAll(/class="result__url"[^>]*>([^<]+)/gi);
-          for (const m of siteMatches) {
-            const urlCandidate = m[1].trim();
-            if (!urlCandidate.includes('instagram.com') &&
-                !urlCandidate.includes('facebook.com') &&
-                !urlCandidate.includes('google.com') &&
-                !urlCandidate.includes('duckduckgo.com') &&
-                !urlCandidate.includes('tripadvisor') &&
-                !urlCandidate.includes('guiamais')) {
-              lead.website = urlCandidate.startsWith('http') ? urlCandidate : 'https://' + urlCandidate;
-              lead.hasWebsite = true;
-              lead.type = 'Site bom';
-              break;
+          // 2. Look for WhatsApp link
+          if (!lead.hasPhone) {
+            const waMatch = html.match(/wa\.me\/(?:55)?(\d{10,11})/i) || html.match(/api\.whatsapp\.com\/send\?phone=(?:55)?(\d{10,11})/i);
+            if (waMatch) {
+              const raw = waMatch[1];
+              lead.rawPhone = raw;
+              const phoneData = formatPhoneNumber(raw);
+              lead.phone = phoneData.formatted;
+              lead.isMobile = true;
+              lead.hasPhone = true;
+              lead.whatsappLink = `https://wa.me/${raw.startsWith('55') ? raw : '55' + raw}`;
+              foundSomething = true;
+            } else {
+              // Look for Brazilian phone in snippets
+              const phoneMatches = html.match(/(?:\(?([1-9]{2})\)?\s?)(?:9\s?\d{4}[-\s]?\d{4}|\d{4}[-\s]?\d{4})/g);
+              if (phoneMatches && phoneMatches.length > 0) {
+                // Find first valid phone with 10 or 11 digits
+                for (const pm of phoneMatches) {
+                  const pData = formatPhoneNumber(pm);
+                  if (pData.raw && (pData.raw.length === 10 || pData.raw.length === 11 || pData.raw.length === 12 || pData.raw.length === 13)) {
+                    lead.phone = pData.formatted;
+                    lead.rawPhone = pData.raw;
+                    lead.isMobile = pData.isMobile;
+                    lead.hasPhone = true;
+                    foundSomething = true;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+
+          // 3. Look for regular website
+          if (!lead.website) {
+            const siteMatches = html.matchAll(/class="result__url"[^>]*>([^<]+)/gi);
+            for (const m of siteMatches) {
+              const urlCandidate = m[1].trim();
+              if (!urlCandidate.includes('instagram.com') &&
+                  !urlCandidate.includes('facebook.com') &&
+                  !urlCandidate.includes('google.com') &&
+                  !urlCandidate.includes('duckduckgo.com') &&
+                  !urlCandidate.includes('tripadvisor') &&
+                  !urlCandidate.includes('guiamais')) {
+                lead.website = urlCandidate.startsWith('http') ? urlCandidate : 'https://' + urlCandidate;
+                lead.hasWebsite = true;
+                lead.type = 'Site bom';
+                foundSomething = true;
+                break;
+              }
             }
           }
         }
+      }
 
-        // Re-evaluate best contact channel & score
+      if (foundSomething) {
         lead.bestContactChannel = determineBestContactChannel(lead.hasPhone, lead.isMobile, lead.hasInstagram, lead.hasWebsite);
         lead.score = calculateLeadScore(lead.hasPhone, lead.hasWebsite, lead.hasInstagram, lead.rating, lead.reviewCount);
         lead.updatedAt = new Date().toISOString();
@@ -1084,19 +1237,19 @@ app.get('/api/templates/:id', (req, res) => {
 
   const templates = [
     {
-      title: 'Opção 1: Foco em Tráfego Pago & Rapport pela Nota',
-      objective: 'Elogio à reputação no Google + proposta para captar mais clientes/alunos particulares via tráfego.',
-      message: `Oi, tudo bem? Vi aqui que a *${name}* tem uma nota de *${rating} estrelas* no Google (${reviews} avaliações), parabéns pelo padrão de atendimento! 👏\n\nTrabalho ajudando negócios aqui na região a atraírem mais alunos e clientes recorrentes através de anúncios estratégicos no Google e Instagram.\n\nVale a pena eu te mandar um áudio de 1 minuto explicando como podemos colocar novos contatos na agenda de vocês toda semana?`
+      title: 'Mensagem Padrão (Rapport Rápido)',
+      objective: 'Mensagem padrão informal e direta para abertura imediata no WhatsApp.',
+      message: 'Olá, tudo bem? Dei uma olhada no google e instagram e gostei do projeto de vocês'
     },
     {
-      title: 'Opção 2: Foco em Criação/Redesign de Site & Conversão',
+      title: 'Opção 2: Foco em Tráfego Pago & Reputação',
+      objective: 'Elogio à nota no Google + proposta para captar novos clientes via anúncios estratégicos.',
+      message: `Oi, tudo bem? Vi aqui que a *${name}* tem uma nota de *${rating} estrelas* no Google (${reviews} avaliações), parabéns pelo padrão de atendimento! 👏\n\nTrabalho ajudando negócios aqui na região a atraírem mais clientes recorrentes através de anúncios estratégicos no Google e Instagram.\n\nVale a pena eu te mandar um áudio de 1 minuto explicando como podemos colocar novos contatos na agenda de vocês toda semana?`
+    },
+    {
+      title: 'Opção 3: Foco em Criação/Redesign de Site & Conversão',
       objective: 'Geração de curiosidade sobre como transformar buscas locais em conversas no WhatsApp.',
       message: `Opa, bom dia! Tudo bem por aí?\n\nEstava pesquisando referências na região e encontrei a *${name}* com uma excelente reputação de *${rating}★ no Google*.\n\nNotei um detalhe importante na presença online de vocês que pode estar fazendo potenciais clientes irem pro concorrente em vez de clicar no WhatsApp.\n\nPosso te mandar um vídeo rápido de 2 minutinhos mostrando esse ajuste sem custo nenhum?`
-    },
-    {
-      title: 'Opção 3: Ultra Curta & Quebra de Padrão (Recepção/Gestor)',
-      objective: 'Mensagem de 2 linhas informal para obter resposta rápida e passar pelo filtro da recepção.',
-      message: `Oi! É da equipe da *${name}*?\n\nVi a nota excelente de vocês no Google (*${rating} estrelas*!) e queria tirar uma dúvida rápida sobre aquisição de novos clientes aí na região.\n\nCom quem eu consigo falar sobre isso rapidinho por aqui?`
     }
   ];
 
@@ -1140,6 +1293,222 @@ app.get('/api/export-json', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', 'attachment; filename="leads_mapscraper_export.json"');
   res.json(leads);
+});
+
+// ==========================================
+// API: SESSIONS & CAMPAIGNS (SALVAR / EXPORTAR SEÇÕES)
+// ==========================================
+
+// List all saved sessions
+app.get('/api/sessions', (req, res) => {
+  let sessions = getSessions();
+  const currentLeads = getLeads();
+
+  // If no sessions exist yet, initialize default session with current leads
+  if (sessions.length === 0 && currentLeads.length > 0) {
+    const defaultSession = {
+      id: 'sess-default',
+      name: 'Academias - Taubaté SP',
+      niche: currentLeads[0].niche || 'Academia',
+      city: currentLeads[0].city || 'Taubaté - SP',
+      leads: currentLeads,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    sessions = [defaultSession];
+    saveSessions(sessions);
+    setActiveSessionMeta({
+      id: defaultSession.id,
+      name: defaultSession.name,
+      niche: defaultSession.niche,
+      city: defaultSession.city
+    });
+  }
+
+  const summary = sessions.map(s => ({
+    id: s.id,
+    name: s.name,
+    niche: s.niche || 'Geral',
+    city: s.city || '',
+    leadCount: Array.isArray(s.leads) ? s.leads.length : 0,
+    createdAt: s.createdAt,
+    updatedAt: s.updatedAt
+  }));
+
+  res.json({
+    sessions: summary,
+    activeSession: getActiveSessionMeta()
+  });
+});
+
+// Save current active leads as a session (Create or Update)
+app.post('/api/sessions', (req, res) => {
+  try {
+    const { name, niche, city, id } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'O nome da sessão é obrigatório.' });
+    }
+
+    const currentLeads = getLeads();
+    let sessions = getSessions();
+    const now = new Date().toISOString();
+
+    let targetSession = null;
+    if (id) {
+      targetSession = sessions.find(s => s.id === id);
+    }
+
+    if (targetSession) {
+      targetSession.name = name.trim();
+      if (niche) targetSession.niche = niche;
+      if (city) targetSession.city = city;
+      targetSession.leads = currentLeads;
+      targetSession.updatedAt = now;
+    } else {
+      targetSession = {
+        id: 'sess-' + Date.now(),
+        name: name.trim(),
+        niche: niche || (currentLeads[0] ? currentLeads[0].niche : 'Geral'),
+        city: city || (currentLeads[0] ? currentLeads[0].city : ''),
+        leads: currentLeads,
+        createdAt: now,
+        updatedAt: now
+      };
+      sessions.unshift(targetSession);
+    }
+
+    saveSessions(sessions);
+    setActiveSessionMeta({
+      id: targetSession.id,
+      name: targetSession.name,
+      niche: targetSession.niche,
+      city: targetSession.city
+    });
+
+    res.json({
+      success: true,
+      session: {
+        id: targetSession.id,
+        name: targetSession.name,
+        niche: targetSession.niche,
+        city: targetSession.city,
+        leadCount: currentLeads.length
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao salvar sessão: ' + err.message });
+  }
+});
+
+// Load a session (Overwrites active leads.json with this session's leads)
+app.post('/api/sessions/:id/load', (req, res) => {
+  try {
+    const { id } = req.params;
+    const sessions = getSessions();
+    const session = sessions.find(s => s.id === id);
+
+    if (!session) {
+      return res.status(404).json({ error: 'Sessão não encontrada.' });
+    }
+
+    const currentLeads = getLeads();
+    if (currentLeads.length > 0) {
+      saveLeads(currentLeads, true); // Backup before switching
+    }
+
+    const sessionLeads = session.leads || [];
+    saveLeads(sessionLeads, false);
+
+    setActiveSessionMeta({
+      id: session.id,
+      name: session.name,
+      niche: session.niche,
+      city: session.city
+    });
+
+    res.json({
+      success: true,
+      session: {
+        id: session.id,
+        name: session.name,
+        niche: session.niche,
+        city: session.city,
+        leadCount: sessionLeads.length
+      },
+      leads: sessionLeads
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao carregar sessão: ' + err.message });
+  }
+});
+
+// Delete a session
+app.delete('/api/sessions/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    let sessions = getSessions();
+    sessions = sessions.filter(s => s.id !== id);
+    saveSessions(sessions);
+
+    const activeMeta = getActiveSessionMeta();
+    if (activeMeta && activeMeta.id === id) {
+      setActiveSessionMeta({ id: null, name: 'Sessão Padrão', niche: 'Geral', city: '' });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao excluir sessão: ' + err.message });
+  }
+});
+
+// Export Session CSV
+app.get('/api/sessions/:id/export-csv', (req, res) => {
+  const { id } = req.params;
+  const sessions = getSessions();
+  const session = sessions.find(s => s.id === id);
+  if (!session) return res.status(404).send('Sessão não encontrada');
+
+  const leads = session.leads || [];
+  let csv = 'Nome,Nicho,Telefone,WhatsApp Raw,Melhor Canal,Avaliacao Google,Avaliacoes,Site,Instagram,Tipo,Status,Score,Endereco,Cidade,Google Maps URL\n';
+
+  leads.forEach(l => {
+    const clean = str => `"${(str || '').toString().replace(/"/g, '""')}"`;
+    csv += [
+      clean(l.name),
+      clean(l.niche),
+      clean(l.phone),
+      clean(l.rawPhone),
+      clean(l.bestContactChannel),
+      clean(l.rating),
+      clean(l.reviewCount),
+      clean(l.website),
+      clean(l.instagram),
+      clean(l.type),
+      clean(l.status),
+      clean(l.score),
+      clean(l.address),
+      clean(l.city),
+      clean(l.googleMapsUrl)
+    ].join(',') + '\n';
+  });
+
+  const safeName = (session.name || 'sessao').replace(/[^a-zA-Z0-9_\-]/g, '_');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="sessao_${safeName}.csv"`);
+  res.send('\uFEFF' + csv);
+});
+
+// Export Session JSON
+app.get('/api/sessions/:id/export-json', (req, res) => {
+  const { id } = req.params;
+  const sessions = getSessions();
+  const session = sessions.find(s => s.id === id);
+  if (!session) return res.status(404).json({ error: 'Sessão não encontrada' });
+
+  const safeName = (session.name || 'sessao').replace(/[^a-zA-Z0-9_\-]/g, '_');
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', `attachment; filename="sessao_${safeName}.json"`);
+  res.json(session);
 });
 
 // Supabase Configuration & Sync
