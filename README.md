@@ -11,9 +11,20 @@ Sistema completo de extração, inteligência de contatos e CRM de prospecção 
   - Normalização automática das classes obfuscadas do Google Maps (`xxVWCe`, `MW4etd`, `UY7F9`, `W4Efsd`, etc.).
   - Classificação inteligente: separa **Site Oficial**, **Instagram (@perfil)** e **WhatsApp (wa.me / celulares)**.
 
-- ⚡ **Varredura Rápida de Instagram & Web (Quick Scan)**:
-  - Busca automatizada no DuckDuckGo para encontrar perfis de Instagram, sites e números de WhatsApp que estavam faltando no Google Maps.
-  - Execução individual por lead ou em massa pela barra de ferramentas.
+- 💾 **Gerenciamento de Sessões / Campanhas (Salvar & Exportar Seções)**:
+  - Permite salvar análises de nichos totalmente isoladas (ex: "Academias - Taubaté SP", "Dentistas - Bela Vista SP") sem misturar os leads.
+  - Alterne instantaneamente entre sessões salvas no modal `Minhas Sessões`.
+  - Opções de exportar sessões individuais em CSV ou JSON a qualquer momento.
+  - Backup automático em `data/backups/` ao alternar ou limpar bases.
+
+- 💬 **Mensagem Padrão de Prospecção no WhatsApp (Rapport Rápido)**:
+  - O botão de WhatsApp e o link direto abrem imediatamente com a mensagem padrão configurada:
+    > *"Olá, tudo bem? Dei uma olhada no google e instagram e gostei do projeto de vocês"*
+  - Scripts alternativos personalizados de Tráfego Pago e Criação/Redesign de Site disponíveis com 1 clique no modal de abordagem.
+
+- ⚡ **Varredura Rápida de Contatos & Instagram (Quick Scan)**:
+  - Busca automatizada no DuckDuckGo e inspeção direta no site das empresas para capturar números de WhatsApp (`wa.me/`), telefones celulares e perfis no Instagram.
+  - Resolve a limitação dos scrapers de listagem rápida do Google Maps que omitem números de telefone nos cartões sumários.
 
 - 🎯 **Identificação do Canal Mais Viável**:
   - Avaliação algorítmica para determinar o melhor ponto de contato para cada lead:
@@ -30,13 +41,6 @@ Sistema completo de extração, inteligência de contatos e CRM de prospecção 
   - `📸 Com Instagram`: leads prontos para prospecção via DM no Instagram.
   - `🟢 Viável WhatsApp`: leads com canal direto pronto para envio de mensagem.
   - `🟣 Viável Instagram DM`: abordagem por direct message.
-
-- 💬 **Scripts de Prospecção Fria no WhatsApp (com Rapport Real)**:
-  - 3 scripts de alta conversão gerados dinamicamente com base no **Nome da Empresa** e na **Nota Real do Google**:
-    1. *Tráfego Pago & Rapport*
-    2. *Criação de Site / Conversão*
-    3. *Ultra Curta (Rápida Resposta)*
-  - Botão de envio direto via `https://wa.me/...` com mensagem pré-carregada.
 
 - 📥 **Importações Múltiplas**:
   - Upload de arquivos `.csv`, `.json`, `.txt`.
