@@ -29,35 +29,40 @@
       </div>
 
       <nav class="sidebar-menu">
-        <button class="nav-item active" id="nav-buscar-leads" onclick="switchPage('buscar')">
-          <i class="fa-solid fa-bullseye"></i>
-          <span>Buscar Leads</span>
-        </button>
-        <button class="nav-item" id="nav-leads" onclick="switchPage('leads')">
+        <button class="nav-item active" id="nav-leads" onclick="switchPage('leads')">
           <i class="fa-solid fa-users"></i>
           <span>Leads & CRM</span>
-          <span class="badge-count" id="sidebar-leads-count">15</span>
+          <span class="badge-count" id="sidebar-leads-count">0</span>
         </button>
-        <button class="nav-item" onclick="openUploadModal()">
+        <button class="nav-item primary-nav" onclick="openUploadModal()">
           <i class="fa-solid fa-cloud-arrow-up text-primary"></i>
-          <span>Upload Google</span>
-          <span class="badge-new">NOVO</span>
+          <span>Upload Planilha</span>
+          <span class="badge-new">PRINCIPAL</span>
+        </button>
+        <button class="nav-item" onclick="openSessionsModal()">
+          <i class="fa-solid fa-folder-tree text-blue"></i>
+          <span>Minhas Sessões</span>
         </button>
         <button class="nav-item" onclick="openSettingsModal()">
           <i class="fa-solid fa-gear"></i>
           <span>Configurações</span>
         </button>
 
-        <div class="menu-divider-label">NO KAPTAR APP</div>
-        <button class="nav-item sub-item" onclick="showToast('Módulo de automação ativo e monitorando.')">
-          <i class="fa-solid fa-robot text-orange"></i>
-          <span>Automação</span>
-          <span class="dot-online"></span>
+        <div class="menu-divider-label">MÓDULOS (PAUSADOS)</div>
+        <button class="nav-item sub-item paused-item" id="nav-buscar-leads" onclick="showToast('ℹ️ Busca automática pausada temporariamente. Use o Upload de Planilha/CSV.')" title="Busca automática pausada temporariamente">
+          <i class="fa-solid fa-bullseye" style="opacity:0.5;"></i>
+          <span style="opacity:0.6;">Buscar Leads</span>
+          <span class="badge-paused">PAUSADO</span>
         </button>
-        <button class="nav-item sub-item" onclick="showToast('S-Zap conectado ao WhatsApp!')">
-          <i class="fa-brands fa-whatsapp text-orange"></i>
-          <span>S-zap</span>
-          <span class="dot-online"></span>
+        <button class="nav-item sub-item paused-item" onclick="showToast('ℹ️ Módulo de automação pausado temporariamente.')" title="Automação pausada temporariamente">
+          <i class="fa-solid fa-robot" style="opacity:0.5;"></i>
+          <span style="opacity:0.6;">Automação</span>
+          <span class="badge-paused">PAUSADO</span>
+        </button>
+        <button class="nav-item sub-item paused-item" onclick="showToast('ℹ️ Módulo S-zap pausado temporariamente.')" title="S-zap pausado temporariamente">
+          <i class="fa-brands fa-whatsapp" style="opacity:0.5;"></i>
+          <span style="opacity:0.6;">S-zap</span>
+          <span class="badge-paused">PAUSADO</span>
         </button>
       </nav>
 
@@ -87,7 +92,7 @@
     <main class="main-content">
       <!-- HEADER -->
       <header class="top-header">
-        <h1 class="page-title" id="page-title-display">Buscar Leads</h1>
+        <h1 class="page-title" id="page-title-display">Gerenciamento de Leads & Upload</h1>
         <div class="header-right">
           <div class="session-header-badge" onclick="openSessionsModal()" title="Gerenciar ou alternar sessões salvas">
             <i class="fa-solid fa-folder-open text-blue"></i>
@@ -95,15 +100,15 @@
             <i class="fa-solid fa-chevron-down session-caret"></i>
           </div>
           <button class="btn-header-action" onclick="openUploadModal()">
-            <i class="fa-solid fa-file-arrow-up"></i> Upload Google Maps
+            <i class="fa-solid fa-cloud-arrow-up"></i> Fazer Upload de Leads
           </button>
           <span class="header-link" onclick="openSettingsModal()"><i class="fa-solid fa-database"></i> D:\sites-vibe-code</span>
           <span class="header-status"><span class="pulse-dot"></span> Salvo localmente</span>
         </div>
       </header>
 
-      <!-- PAGE 1: BUSCAR LEADS (CAPTAÇÃO) -->
-      <div class="page-container active" id="page-buscar">
+      <!-- PAGE 1: BUSCAR LEADS (CAPTAÇÃO - PAUSADO) -->
+      <div class="page-container" id="page-buscar">
         <div class="search-form-grid">
           <!-- CARD LOCALIZAÇÃO COM MAPA -->
           <div class="card map-card">
@@ -276,8 +281,8 @@
         </div>
       </div>
 
-      <!-- PAGE 2: LEADS (FOLLOW-UP / CRM) -->
-      <div class="page-container" id="page-leads">
+      <!-- PAGE 2: LEADS (FOLLOW-UP / CRM / UPLOAD) -->
+      <div class="page-container active" id="page-leads">
         <!-- TOP ACTIONS & MANAGEMENT TOOLBAR -->
         <div class="leads-toolbar flex-between">
           <!-- TABS PIPELINE -->
@@ -492,7 +497,7 @@
         <!-- TABS DE UPLOAD: ARQUIVO, TEXTO OU GOOGLE SHEETS -->
         <div class="upload-mode-tabs">
           <button class="upload-tab active" id="tab-file-mode" onclick="switchUploadMode('file')">
-            <i class="fa-solid fa-file-csv"></i> Arquivo (.CSV ou .JSON)
+            <i class="fa-solid fa-file-excel text-green"></i> Planilha (.XLSX, .CSV, .JSON)
           </button>
           <button class="upload-tab" id="tab-sheets-mode" onclick="switchUploadMode('sheets')">
             <i class="fa-solid fa-table"></i> Google Planilhas (URL)
@@ -504,15 +509,16 @@
 
         <!-- FILE DRAG & DROP ZONE -->
         <div id="file-drop-zone" class="drop-zone" onclick="document.getElementById('file-input-element').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-          <input type="file" id="file-input-element" accept=".csv, .json, .txt" style="display:none" onchange="handleFileSelected(event)">
+          <input type="file" id="file-input-element" accept=".xlsx, .xls, .csv, .json, .txt" style="display:none" onchange="handleFileSelected(event)">
           <div class="drop-zone-content">
             <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
-            <h4>Arraste e solte seu arquivo aqui</h4>
-            <p>ou clique para escolher do seu computador (CSV, JSON)</p>
+            <h4>Arraste e solte sua planilha aqui</h4>
+            <p>ou clique para escolher do seu computador (Excel .xlsx, .csv, .json)</p>
             <div class="file-badges">
+              <span class="file-ext-badge"><i class="fa-solid fa-file-excel text-green"></i> .XLSX</span>
               <span class="file-ext-badge">.CSV</span>
               <span class="file-ext-badge">.JSON</span>
-              <span class="file-ext-badge">Instant Data Scraper</span>
+              <span class="file-ext-badge">Google Maps Scraper</span>
             </div>
             <div id="selected-file-name" class="selected-file-name hidden"></div>
           </div>
@@ -870,6 +876,8 @@
     <span id="toast-text">Notificação</span>
   </div>
 
+  <!-- SheetJS for Native Excel (.xlsx, .xls) Parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="app.js"></script>

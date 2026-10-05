@@ -1,5 +1,5 @@
 // State Management
-let currentTab = 'buscar'; // 'buscar' or 'leads'
+let currentTab = 'leads'; // default to 'leads'
 let crmActiveTab = 'ativos'; // 'ativos', 'qualificados', 'em_contato', 'fechados', 'arquivados'
 let smartActiveTab = 'all'; // 'all', 'high_rating', 'with_site', 'no_site', 'with_instagram', 'viavel_whatsapp', 'viavel_instagram'
 let allLeads = [];
@@ -34,30 +34,35 @@ let currentRadiusKm = 2;
 
 // DOM Ready
 document.addEventListener('DOMContentLoaded', () => {
-  initMap();
+  switchPage('leads');
   loadLeads();
-  renderSelectedNiches();
   fetchActiveSessionInfo();
 });
 
 // Switch Main Page
 function switchPage(page) {
   currentTab = page;
-  document.getElementById('nav-buscar-leads').classList.toggle('active', page === 'buscar');
-  document.getElementById('nav-leads').classList.toggle('active', page === 'leads');
+  const navBuscar = document.getElementById('nav-buscar-leads');
+  const navLeads = document.getElementById('nav-leads');
+  const pageBuscar = document.getElementById('page-buscar');
+  const pageLeads = document.getElementById('page-leads');
 
-  document.getElementById('page-buscar').classList.toggle('active', page === 'buscar');
-  document.getElementById('page-leads').classList.toggle('active', page === 'leads');
+  if (navBuscar) navBuscar.classList.toggle('active', page === 'buscar');
+  if (navLeads) navLeads.classList.toggle('active', page === 'leads');
+  if (pageBuscar) pageBuscar.classList.toggle('active', page === 'buscar');
+  if (pageLeads) pageLeads.classList.toggle('active', page === 'leads');
 
   const titleEl = document.getElementById('page-title-display');
-  if (page === 'buscar') {
-    titleEl.innerText = 'Buscar Leads';
-    setTimeout(() => {
-      if (map) map.invalidateSize();
-    }, 200);
-  } else {
-    titleEl.innerText = 'Gerenciamento de Leads & CRM';
-    loadLeads();
+  if (titleEl) {
+    if (page === 'buscar') {
+      titleEl.innerText = 'Buscar Leads (Pausado)';
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+      }, 200);
+    } else {
+      titleEl.innerText = 'Gerenciamento de Leads & Upload';
+      loadLeads();
+    }
   }
 }
 
@@ -834,12 +839,40 @@ function handleFileSelected(e) {
 
 function processSelectedFile(file) {
   uploadFileName = file.name;
-  uploadFileType = file.name.endsWith('.json') ? 'json' : 'csv';
 
   const badge = document.getElementById('selected-file-name');
-  badge.innerHTML = `<i class="fa-solid fa-file-csv"></i> <strong>${file.name}</strong> (${(file.size / 1024).toFixed(1)} KB)`;
+  const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+  const iconClass = isExcel ? 'fa-solid fa-file-excel text-green' : (file.name.endsWith('.json') ? 'fa-solid fa-file-code' : 'fa-solid fa-file-csv');
+  badge.innerHTML = `<i class="${iconClass}"></i> <strong>${file.name}</strong> (${(file.size / 1024).toFixed(1)} KB)`;
   badge.classList.remove('hidden');
 
+  // Excel (.xlsx, .xls) native support via SheetJS
+  if (isExcel) {
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      try {
+        if (typeof XLSX === 'undefined') {
+          showToast('Biblioteca XLSX inicializando, tente novamente em 2 segundos...');
+          return;
+        }
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+        uploadFileContent = JSON.stringify(rows);
+        uploadFileType = 'json';
+        parseAndPreviewUpload(uploadFileContent, 'json');
+      } catch (err) {
+        showToast('Erro ao ler planilha Excel: ' + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    return;
+  }
+
+  // Text, CSV, JSON
+  uploadFileType = file.name.toLowerCase().endsWith('.json') ? 'json' : 'csv';
   const reader = new FileReader();
   reader.onload = function(evt) {
     uploadFileContent = evt.target.result;
@@ -1346,6 +1379,8 @@ async function syncLeadsToSupabase() {
       btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar Leads para Supabase`;
     }
   }
+}
+
 // ==========================================
 // SESSIONS & CAMPAIGNS (SALVAR / EXPORTAR SEÇÕES)
 // ==========================================

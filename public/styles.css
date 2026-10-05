@@ -2395,4 +2395,28 @@ body {
   color: #ef4444;
 }
 
+/* PAUSED MODULES BADGES */
+.badge-paused {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #94a3b8;
+  background: #1e2533;
+  border: 1px solid #334155;
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: auto;
+  letter-spacing: 0.5px;
+}
+
+.paused-item {
+  opacity: 0.55;
+  cursor: not-allowed !important;
+}
+
+.paused-item:hover {
+  background: transparent !important;
+  opacity: 0.75;
+}
+
+
 
