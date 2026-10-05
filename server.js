@@ -332,11 +332,14 @@ function mapGoogleScraperRecord(item, customNiche = 'Geral') {
   // Website / Url
   const websiteRaw = findValue(['website', 'site', 'url', 'web', 'Site', 'Url']);
 
-  // Phone / Telefone / WhatsApp mapping
+  // Phone / Telefone / WhatsApp / API Number mapping
   let phoneVal = findValue([
-    'phone', 'telephone', 'phone_number', 'phoneNumber', 'telefone', 'contato', 'tel', 'contact_phone',
+    'number', 'numero', 'phone_number', 'phoneNumber', 'phone', 'telephone',
+    'formatted_phone_number', 'formattedPhoneNumber', 'international_phone_number', 'internationalPhoneNumber',
+    'national_phone_number', 'nationalPhoneNumber', 'telefone', 'contato', 'tel', 'contact_phone',
     'celular', 'whatsapp', 'whats', 'zap', 'mobile', 'cel', 'tel_contato', 'phone1', 'telefone1',
-    'phone_1', 'telefone_1', 'fone', 'tel_fixo', 'telefone_fixo'
+    'phone_1', 'telefone_1', 'fone', 'tel_fixo', 'telefone_fixo', 'whatsapp_number', 'wa_number',
+    'contact_number', 'contactNumber', 'api_number', 'caller_id'
   ]);
 
   // Instagram raw
@@ -434,12 +437,16 @@ function mapGoogleScraperRecord(item, customNiche = 'Geral') {
     city: city,
     phone: phoneData.formatted || '',
     rawPhone: phoneData.raw || '',
+    number: phoneData.formatted || '',
+    phoneNumber: phoneData.formatted || '',
+    rawNumber: phoneData.raw || '',
+    whatsappNumber: phoneData.raw || '',
     isMobile: phoneData.isMobile,
     rating: parseFloat(rating.toFixed(1)),
     reviewCount: reviewCount,
     website: website,
     instagram: instagram,
-    whatsappLink: whatsappLink,
+    whatsappLink: whatsappLink || (phoneData.raw ? `https://wa.me/${phoneData.raw}` : null),
     googleMapsUrl: googleMapsUrl || null,
     imageUrl: imageUrl || null,
     hasPhone,
@@ -1223,6 +1230,54 @@ app.delete('/api/leads/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// API: Clear/Delete Current Table of Leads
+app.post('/api/leads/clear-table', (req, res) => {
+  const { deleteSession = false } = req.body || {};
+  const currentLeads = getLeads();
+  const activeMeta = getActiveSessionMeta();
+
+  // Save backup before clearing
+  if (currentLeads.length > 0) {
+    saveLeads(currentLeads, true);
+  }
+
+  // Clear leads
+  saveLeads([], false);
+
+  // If requested, also remove from sessions list
+  if (deleteSession && activeMeta && activeMeta.id) {
+    let sessions = getSessions();
+    sessions = sessions.filter(s => s.id !== activeMeta.id);
+    saveSessions(sessions);
+    setActiveSessionMeta({ id: null, name: 'Tabela Vazia', niche: 'Geral', city: '' });
+  }
+
+  res.json({ success: true, message: 'Tabela de leads excluída com sucesso. Backup gerado.' });
+});
+
+// API: Get Leads Numbers (Retorno de numbers de API)
+app.get('/api/leads/numbers', (req, res) => {
+  const leads = getLeads();
+  const withNumbers = leads.filter(l => l.phone || l.rawPhone || l.number || l.phoneNumber);
+  res.json({
+    totalLeads: leads.length,
+    totalNumbers: withNumbers.length,
+    numbers: withNumbers.map(l => ({
+      id: l.id,
+      name: l.name,
+      number: l.number || l.phone || '',
+      phoneNumber: l.phoneNumber || l.phone || '',
+      rawNumber: l.rawNumber || l.rawPhone || '',
+      whatsappNumber: l.whatsappNumber || l.rawPhone || '',
+      whatsappUrl: l.whatsappLink || (l.rawPhone ? `https://wa.me/${l.rawPhone}` : ''),
+      isMobile: l.isMobile,
+      rating: l.rating,
+      niche: l.niche,
+      city: l.city
+    }))
+  });
+});
+
 // API: WhatsApp Message Generator (3 scripts)
 app.get('/api/templates/:id', (req, res) => {
   const { id } = req.params;
@@ -1239,7 +1294,7 @@ app.get('/api/templates/:id', (req, res) => {
     {
       title: 'Mensagem Padrão (Rapport Rápido)',
       objective: 'Mensagem padrão informal e direta para abertura imediata no WhatsApp.',
-      message: 'Olá, tudo bem? Dei uma olhada no google e instagram e gostei do projeto de vocês'
+      message: 'Olá, tudo bem? Dei uma olhada no google e instagram de vocês e gostei bastante do projeto'
     },
     {
       title: 'Opção 2: Foco em Tráfego Pago & Reputação',

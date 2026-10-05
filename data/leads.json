@@ -132,10 +132,11 @@
     "hasInstagram": false,
     "bestContactChannel": "maps",
     "type": "Sem presença",
-    "status": "Novo",
+    "status": "Em Contato",
     "score": 85,
     "notes": "Captado via Google Maps em 05/10/2026",
-    "createdAt": "2026-10-05T16:59:33.839Z"
+    "createdAt": "2026-10-05T16:59:33.839Z",
+    "updatedAt": "2026-10-05T18:24:36.758Z"
   },
   {
     "id": "lead-1791219573839-rv2q48",

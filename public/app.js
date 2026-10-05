@@ -321,6 +321,9 @@ function updateTabCounts() {
   const scWithIg = document.getElementById('smart-count-with-instagram');
   if (scWithIg) scWithIg.innerText = allLeads.filter(l => l.hasInstagram).length;
 
+  const scWithPhone = document.getElementById('smart-count-with-phone');
+  if (scWithPhone) scWithPhone.innerText = allLeads.filter(l => l.hasPhone || l.phone || l.number).length;
+
   const scViavelWa = document.getElementById('smart-count-viavel-whatsapp');
   if (scViavelWa) scViavelWa.innerText = allLeads.filter(l => l.bestContactChannel === 'whatsapp').length;
 
@@ -416,6 +419,7 @@ function applyLeadsFilters() {
     if (smartActiveTab === 'with_site' && !lead.hasWebsite) return false;
     if (smartActiveTab === 'no_site' && lead.hasWebsite) return false;
     if (smartActiveTab === 'with_instagram' && !lead.hasInstagram) return false;
+    if (smartActiveTab === 'with_phone' && (!lead.hasPhone && !lead.phone && !lead.number)) return false;
     if (smartActiveTab === 'viavel_whatsapp' && lead.bestContactChannel !== 'whatsapp') return false;
     if (smartActiveTab === 'viavel_instagram' && lead.bestContactChannel !== 'instagram') return false;
 
@@ -561,7 +565,7 @@ function renderTable(leads) {
       <td>
         <div class="phone-cell">
           <span>${phoneDisplay}</span>
-          ${waNumber ? `<a href="https://wa.me/${waNumber}?text=${encodeURIComponent('Olá, tudo bem? Dei uma olhada no google e instagram e gostei do projeto de vocês')}" target="_blank" class="presence-icon-link" title="Abrir conversa no WhatsApp com mensagem padrão"><i class="fa-brands fa-whatsapp text-green"></i></a>` : ''}
+          ${waNumber ? `<a href="https://wa.me/${waNumber}?text=${encodeURIComponent('Olá, tudo bem? Dei uma olhada no google e instagram de vocês e gostei bastante do projeto')}" target="_blank" class="presence-icon-link" title="Abrir conversa no WhatsApp com mensagem padrão"><i class="fa-brands fa-whatsapp text-green"></i></a>` : ''}
           <button class="btn-inline-edit" onclick="navigator.clipboard.writeText('${phoneDisplay}'); showToast('Telefone copiado!');" title="Copiar telefone"><i class="fa-regular fa-copy"></i></button>
         </div>
       </td>
@@ -1178,7 +1182,7 @@ function copyWhatsAppMessage() {
 }
 
 function openDirectWhatsApp() {
-  const defaultMsg = 'Olá, tudo bem? Dei uma olhada no google e instagram e gostei do projeto de vocês';
+  const defaultMsg = 'Olá, tudo bem? Dei uma olhada no google e instagram de vocês e gostei bastante do projeto';
   const textVal = document.getElementById('whatsapp-message-text') ? document.getElementById('whatsapp-message-text').value.trim() : '';
   const text = textVal || defaultMsg;
   const rawPhone = currentLeadForWhatsApp.rawPhone || (currentLeadForWhatsApp.phone ? currentLeadForWhatsApp.phone.replace(/\D/g, '') : '');
@@ -1606,6 +1610,38 @@ function exportCurrentSessionFile(format) {
     window.location.href = `/api/sessions/${activeSessionMeta.id}/export-${format}`;
   } else {
     window.location.href = `/api/export-${format}`;
+  }
+}
+
+async function confirmDeleteCurrentTable() {
+  const leadCount = allLeads.length;
+  if (leadCount === 0) {
+    showToast('A tabela de leads já está vazia.');
+    return;
+  }
+
+  const sessName = activeSessionMeta && activeSessionMeta.name ? activeSessionMeta.name : 'atual';
+  const confirmed = confirm(`⚠️ Tem certeza que deseja excluir esta tabela com ${leadCount} leads ("${sessName}")?\n\nTodos os leads serão limpos da tela e um backup de segurança será salvo automaticamente.`);
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch('/api/leads/clear-table', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deleteSession: false })
+    });
+    const data = await res.json();
+    if (data.success) {
+      allLeads = [];
+      selectedLeadIds.clear();
+      applyFiltersAndRender();
+      updateSmartCounters();
+      showToast('🗑️ Tabela de leads excluída com sucesso! Backup salvo.');
+    } else {
+      showToast('Erro ao excluir tabela: ' + (data.error || 'Erro desconhecido'));
+    }
+  } catch (e) {
+    showToast('Erro de conexão: ' + e.message);
   }
 }
 

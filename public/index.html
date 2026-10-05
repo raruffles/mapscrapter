@@ -315,6 +315,9 @@
             <button class="btn-secondary" onclick="openSaveSessionPrompt()" title="Salvar análise de dados atual como uma sessão isolada">
               <i class="fa-solid fa-floppy-disk text-blue"></i> Salvar Sessão
             </button>
+            <button class="btn-secondary" onclick="confirmDeleteCurrentTable()" title="Excluir tabela atual de leads (gera backup de segurança)">
+              <i class="fa-solid fa-trash-can text-red"></i> Excluir Tabela
+            </button>
             <button class="btn-secondary" onclick="openSessionsModal()" title="Gerenciar e alternar sessões salvas">
               <i class="fa-solid fa-folder-tree"></i> Minhas Sessões
             </button>
@@ -325,7 +328,7 @@
               <i class="fa-solid fa-broom"></i> Limpar Duplicados
             </button>
             <button class="btn-secondary" onclick="clearAllLeads()" title="Zerar base de dados para importar nova planilha limpa">
-              <i class="fa-solid fa-trash-can"></i> Limpar Base
+              <i class="fa-solid fa-broom-ball"></i> Limpar Base
             </button>
             <div class="dropdown-wrapper">
               <button class="btn-secondary" onclick="toggleExportMenu()">
@@ -334,6 +337,7 @@
               <div class="export-dropdown hidden" id="export-dropdown">
                 <a href="/api/export-csv" download><i class="fa-solid fa-file-csv"></i> Exportar Leads (CSV)</a>
                 <a href="/api/export-json" download><i class="fa-solid fa-file-code"></i> Exportar Leads (JSON)</a>
+                <a href="/api/leads/numbers" target="_blank"><i class="fa-solid fa-phone"></i> Ver Números de API (JSON)</a>
                 <a href="javascript:void(0)" onclick="exportCurrentSessionFile('csv')"><i class="fa-solid fa-file-arrow-down"></i> Exportar Sessão Atual (CSV)</a>
                 <a href="javascript:void(0)" onclick="exportCurrentSessionFile('json')"><i class="fa-solid fa-file-arrow-down"></i> Exportar Sessão Atual (JSON)</a>
               </div>
@@ -345,6 +349,9 @@
         <div class="smart-management-tabs">
           <button class="smart-tab active" data-smart="all" onclick="filterBySmartTab('all')">
             <i class="fa-solid fa-layer-group"></i> Todos os Leads <span class="smart-badge" id="smart-count-all">0</span>
+          </button>
+          <button class="smart-tab" data-smart="with_phone" onclick="filterBySmartTab('with_phone')">
+            <i class="fa-solid fa-phone text-green"></i> Com Número / Zap <span class="smart-badge" id="smart-count-with-phone">0</span>
           </button>
           <button class="smart-tab" data-smart="high_rating" onclick="filterBySmartTab('high_rating')">
             <i class="fa-solid fa-star text-yellow"></i> Nota Alta (4.8+) <span class="smart-badge" id="smart-count-high-rating">0</span>

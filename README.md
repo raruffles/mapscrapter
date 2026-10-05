@@ -19,7 +19,7 @@ Sistema completo de extração, inteligência de contatos e CRM de prospecção 
 
 - 💬 **Mensagem Padrão de Prospecção no WhatsApp (Rapport Rápido)**:
   - O botão de WhatsApp e o link direto abrem imediatamente com a mensagem padrão configurada:
-    > *"Olá, tudo bem? Dei uma olhada no google e instagram e gostei do projeto de vocês"*
+    > *"Olá, tudo bem? Dei uma olhada no google e instagram de vocês e gostei bastante do projeto"*
   - Scripts alternativos personalizados de Tráfego Pago e Criação/Redesign de Site disponíveis com 1 clique no modal de abordagem.
 
 - ⚡ **Varredura Rápida de Contatos & Instagram (Quick Scan)**:
