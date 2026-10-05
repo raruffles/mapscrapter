@@ -1,0 +1,1288 @@
+// State Management
+let currentTab = 'buscar'; // 'buscar' or 'leads'
+let crmActiveTab = 'ativos'; // 'ativos', 'qualificados', 'em_contato', 'fechados', 'arquivados'
+let smartActiveTab = 'all'; // 'all', 'high_rating', 'with_site', 'no_site', 'with_instagram', 'viavel_whatsapp', 'viavel_instagram'
+let allLeads = [];
+let filteredLeads = [];
+let selectedNiches = ['Clínicas de Odontologia'];
+let activeFilters = { phone: false, site: false, instagram: false };
+let presenceFilter = null; // 'phone', 'site', 'instagram', 'none'
+let currentSort = 'score-desc';
+
+// Bulk Selection
+const selectedLeadIds = new Set();
+
+// Upload Variables
+let uploadFileContent = '';
+let uploadFileType = 'csv';
+let uploadFileName = '';
+
+// WhatsApp Modal Variables
+let currentLeadForWhatsApp = null;
+let currentLeadTemplates = [];
+let activeTemplateIndex = 0;
+
+// Edit Lead Modal Variables
+let editingLeadId = null;
+
+// Map Variables
+let map = null;
+let mapMarker = null;
+let mapCircle = null;
+let currentCoords = { lat: -23.5629, lon: -46.6548 }; // Bela Vista, São Paulo
+let currentRadiusKm = 2;
+
+// DOM Ready
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  loadLeads();
+  renderSelectedNiches();
+});
+
+// Switch Main Page
+function switchPage(page) {
+  currentTab = page;
+  document.getElementById('nav-buscar-leads').classList.toggle('active', page === 'buscar');
+  document.getElementById('nav-leads').classList.toggle('active', page === 'leads');
+
+  document.getElementById('page-buscar').classList.toggle('active', page === 'buscar');
+  document.getElementById('page-leads').classList.toggle('active', page === 'leads');
+
+  const titleEl = document.getElementById('page-title-display');
+  if (page === 'buscar') {
+    titleEl.innerText = 'Buscar Leads';
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, 200);
+  } else {
+    titleEl.innerText = 'Gerenciamento de Leads & CRM';
+    loadLeads();
+  }
+}
+
+// Initialize Leaflet Map
+function initMap() {
+  const mapContainer = document.getElementById('map');
+  if (!mapContainer) return;
+
+  map = L.map('map', {
+    zoomControl: true,
+    attributionControl: false
+  }).setView([currentCoords.lat, currentCoords.lon], 14);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    subdomains: 'abcd'
+  }).addTo(map);
+
+  const pinIcon = L.divIcon({
+    className: 'custom-map-pin',
+    html: '<div style="background:#22c55e;color:#000;font-weight:700;font-size:11px;padding:3px 8px;border-radius:12px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.5);display:flex;align-items:center;gap:4px;"><i class=\"fa-solid fa-location-dot\"></i> Pin 1</div>',
+    iconSize: [60, 26],
+    iconAnchor: [30, 13]
+  });
+
+  mapMarker = L.marker([currentCoords.lat, currentCoords.lon], {
+    icon: pinIcon,
+    draggable: true
+  }).addTo(map);
+
+  mapCircle = L.circle([currentCoords.lat, currentCoords.lon], {
+    color: '#22c55e',
+    fillColor: '#22c55e',
+    fillOpacity: 0.15,
+    weight: 2,
+    radius: currentRadiusKm * 1000
+  }).addTo(map);
+
+  map.on('click', (e) => {
+    updateMarkerPosition(e.latlng.lat, e.latlng.lng);
+  });
+
+  mapMarker.on('dragend', (e) => {
+    const latlng = e.target.getLatLng();
+    updateMarkerPosition(latlng.lat, latlng.lng);
+  });
+}
+
+function updateMarkerPosition(lat, lon) {
+  currentCoords = { lat, lon };
+  if (mapMarker) mapMarker.setLatLng([lat, lon]);
+  if (mapCircle) mapCircle.setLatLng([lat, lon]);
+}
+
+function updateRadius(val) {
+  currentRadiusKm = parseFloat(val);
+  document.getElementById('radius-val').innerText = val;
+  if (mapCircle) {
+    mapCircle.setRadius(currentRadiusKm * 1000);
+  }
+}
+
+// Search region / geocoding
+async function searchRegionOnMap() {
+  const query = document.getElementById('region-input').value.trim();
+  if (!query) return;
+
+  try {
+    showToast('Buscando localização...');
+    const res = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error('Não encontrado');
+    const data = await res.json();
+
+    updateMarkerPosition(data.lat, data.lon);
+    map.setView([data.lat, data.lon], 14);
+    showToast(`Localizado: ${data.name.split(',')[0]}`);
+  } catch (err) {
+    showToast('Localização não encontrada. Clique no mapa.');
+  }
+}
+
+// Niche Tags Management
+function renderSelectedNiches() {
+  const container = document.getElementById('selected-tags');
+  if (!container) return;
+  container.innerHTML = '';
+
+  selectedNiches.forEach(niche => {
+    const pill = document.createElement('span');
+    pill.className = 'tag-pill selected';
+    pill.innerHTML = `${niche} <i class="fa-solid fa-xmark remove-tag" onclick="removeNiche('${niche}')"></i>`;
+    container.appendChild(pill);
+  });
+
+  const countEl = document.getElementById('selected-niche-count');
+  if (countEl) {
+    countEl.innerText = `${selectedNiches.length} selecionada${selectedNiches.length > 1 ? 's' : ''}`;
+  }
+
+  document.querySelectorAll('.pill-chip').forEach(btn => {
+    const txt = btn.innerText.trim();
+    btn.classList.toggle('active', selectedNiches.includes(txt));
+  });
+}
+
+function toggleNicheChip(btn, niche) {
+  if (selectedNiches.includes(niche)) {
+    selectedNiches = selectedNiches.filter(n => n !== niche);
+  } else {
+    selectedNiches.push(niche);
+  }
+  renderSelectedNiches();
+}
+
+function removeNiche(niche) {
+  selectedNiches = selectedNiches.filter(n => n !== niche);
+  renderSelectedNiches();
+}
+
+function clearSelectedNiches() {
+  selectedNiches = [];
+  renderSelectedNiches();
+}
+
+function handleCustomNicheKey(event) {
+  if (event.key === 'Enter') {
+    addCustomNiche();
+  }
+}
+
+function addCustomNiche() {
+  const input = document.getElementById('custom-niche-input');
+  const val = input.value.trim();
+  if (val && !selectedNiches.includes(val)) {
+    selectedNiches.push(val);
+    renderSelectedNiches();
+    input.value = '';
+  }
+}
+
+// Filters toggle (phone, site, instagram)
+function toggleFilterChip(el) {
+  el.classList.toggle('active');
+  activeFilters.phone = document.getElementById('filter-phone').classList.contains('active');
+  activeFilters.site = document.getElementById('filter-site').classList.contains('active');
+  activeFilters.instagram = document.getElementById('filter-instagram').classList.contains('active');
+}
+
+// REAL SCRAPING EXECUTION
+async function executeRealScraper() {
+  const btn = document.getElementById('btn-start-scrape');
+  const statusMsg = document.getElementById('scrape-status-message');
+  const region = document.getElementById('region-input').value.trim() || 'Bela Vista, São Paulo - SP';
+  const maxResults = parseInt(document.getElementById('max-results-slider').value) || 15;
+  const dataSource = document.getElementById('data-source-select').value;
+  const niche = selectedNiches[0] || 'Clínicas de Odontologia';
+
+  btn.disabled = true;
+  statusMsg.classList.remove('hidden');
+  statusMsg.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Conectando a <strong>${dataSource}</strong> e extraindo leads em <strong>${region}</strong>...`;
+
+  try {
+    const response = await fetch('/api/scrape', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        niche,
+        region,
+        lat: currentCoords.lat,
+        lon: currentCoords.lon,
+        radiusKm: currentRadiusKm,
+        maxResults,
+        filters: activeFilters,
+        dataSource
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      showToast(`🎯 Sucesso! ${data.count} leads reais extraídos com telefone e nota.`);
+      setTimeout(() => {
+        switchPage('leads');
+      }, 1000);
+    } else {
+      showToast('Aviso: Nenhum novo lead encontrado para os critérios.');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('Erro ao executar o scraper. Verifique a conexão.');
+  } finally {
+    btn.disabled = false;
+    statusMsg.classList.add('hidden');
+  }
+}
+
+// LOAD LEADS FROM API
+async function loadLeads() {
+  try {
+    const res = await fetch('/api/leads');
+    allLeads = await res.json();
+
+    const countBadge = document.getElementById('sidebar-leads-count');
+    if (countBadge) countBadge.innerText = allLeads.length;
+
+    updateTabCounts();
+    applyLeadsFilters();
+  } catch (err) {
+    console.error('Erro ao carregar leads:', err);
+  }
+}
+
+// DOMAIN EXTRACT HELPER
+function extractDomain(url) {
+  if (!url) return '';
+  try {
+    const parsed = new URL(url.startsWith('http') ? url : 'https://' + url);
+    return parsed.hostname.replace(/^www\./, '');
+  } catch (e) {
+    return url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
+  }
+}
+
+// UPDATE TAB COUNTS
+function updateTabCounts() {
+  const countAtivos = allLeads.filter(l => l.status !== 'Arquivado').length;
+  const countQualificados = allLeads.filter(l => l.status === 'Qualificado').length;
+  const countEmContato = allLeads.filter(l => l.status === 'Em Contato').length;
+  const countFechados = allLeads.filter(l => l.status === 'Fechado').length;
+  const countArquivados = allLeads.filter(l => l.status === 'Arquivado').length;
+
+  const tabAtivos = document.getElementById('tab-count-ativos');
+  if (tabAtivos) tabAtivos.innerText = countAtivos;
+  const tabQual = document.getElementById('tab-count-qualificados');
+  if (tabQual) tabQual.innerText = countQualificados;
+  const tabContato = document.getElementById('tab-count-em_contato');
+  if (tabContato) tabContato.innerText = countEmContato;
+  const tabFech = document.getElementById('tab-count-fechados');
+  if (tabFech) tabFech.innerText = countFechados;
+  const tabArq = document.getElementById('tab-count-arquivados');
+  if (tabArq) tabArq.innerText = countArquivados;
+
+  // SMART COUNTS
+  const scAll = document.getElementById('smart-count-all');
+  if (scAll) scAll.innerText = allLeads.length;
+
+  const scHigh = document.getElementById('smart-count-high-rating');
+  if (scHigh) scHigh.innerText = allLeads.filter(l => (l.rating || 0) >= 4.8).length;
+
+  const scWithSite = document.getElementById('smart-count-with-site');
+  if (scWithSite) scWithSite.innerText = allLeads.filter(l => l.hasWebsite).length;
+
+  const scNoSite = document.getElementById('smart-count-no-site');
+  if (scNoSite) scNoSite.innerText = allLeads.filter(l => !l.hasWebsite).length;
+
+  const scWithIg = document.getElementById('smart-count-with-instagram');
+  if (scWithIg) scWithIg.innerText = allLeads.filter(l => l.hasInstagram).length;
+
+  const scViavelWa = document.getElementById('smart-count-viavel-whatsapp');
+  if (scViavelWa) scViavelWa.innerText = allLeads.filter(l => l.bestContactChannel === 'whatsapp').length;
+
+  const scViavelIg = document.getElementById('smart-count-viavel-instagram');
+  if (scViavelIg) scViavelIg.innerText = allLeads.filter(l => l.bestContactChannel === 'instagram').length;
+}
+
+// FILTER BY PIPELINE TAB
+function filterByTab(tab) {
+  crmActiveTab = tab;
+  document.querySelectorAll('.crm-tab').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-tab') === tab);
+  });
+  applyLeadsFilters();
+}
+
+// FILTER BY SMART TAB (Nota, Sem Site, Instagram, Viabilidade)
+function filterBySmartTab(tab) {
+  smartActiveTab = tab;
+  document.querySelectorAll('.smart-tab').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-smart') === tab);
+  });
+  applyLeadsFilters();
+}
+
+// TOGGLE PRESENCE FILTER
+function togglePresenceFilter(btn, type) {
+  const wasActive = btn.classList.contains('active');
+  document.querySelectorAll('.presence-chip').forEach(b => b.classList.remove('active'));
+
+  if (!wasActive) {
+    btn.classList.add('active');
+    presenceFilter = type;
+  } else {
+    presenceFilter = null;
+  }
+  applyLeadsFilters();
+}
+
+// SORTING
+function applySort(sortVal) {
+  currentSort = sortVal;
+  applyLeadsFilters();
+}
+
+// APPLY ALL FILTERS & SORT
+function applyLeadsFilters() {
+  const search = document.getElementById('search-leads-input').value.toLowerCase().trim();
+  const scoreFilter = document.getElementById('filter-score-select').value;
+  const statusFilter = document.getElementById('filter-status-select').value;
+
+  filteredLeads = allLeads.filter(lead => {
+    // 1. Pipeline Tab Filter
+    if (crmActiveTab === 'ativos' && lead.status === 'Arquivado') return false;
+    if (crmActiveTab === 'qualificados' && lead.status !== 'Qualificado') return false;
+    if (crmActiveTab === 'em_contato' && lead.status !== 'Em Contato') return false;
+    if (crmActiveTab === 'fechados' && lead.status !== 'Fechado') return false;
+    if (crmActiveTab === 'arquivados' && lead.status !== 'Arquivado') return false;
+
+    // 2. Smart Tabs (Guias Inteligentes)
+    if (smartActiveTab === 'high_rating' && (lead.rating || 0) < 4.8) return false;
+    if (smartActiveTab === 'with_site' && !lead.hasWebsite) return false;
+    if (smartActiveTab === 'no_site' && lead.hasWebsite) return false;
+    if (smartActiveTab === 'with_instagram' && !lead.hasInstagram) return false;
+    if (smartActiveTab === 'viavel_whatsapp' && lead.bestContactChannel !== 'whatsapp') return false;
+    if (smartActiveTab === 'viavel_instagram' && lead.bestContactChannel !== 'instagram') return false;
+
+    // 3. Status Dropdown
+    if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
+
+    // 4. Score Dropdown
+    if (scoreFilter === 'high' && lead.score < 95) return false;
+    if (scoreFilter === 'medium' && (lead.score < 90 || lead.score >= 95)) return false;
+    if (scoreFilter === 'low' && lead.score >= 90) return false;
+
+    // 5. Presence Filter Chips
+    if (presenceFilter === 'phone' && !lead.hasPhone) return false;
+    if (presenceFilter === 'site' && !lead.hasWebsite) return false;
+    if (presenceFilter === 'instagram' && !lead.hasInstagram) return false;
+    if (presenceFilter === 'none' && (lead.hasWebsite || lead.hasInstagram)) return false;
+
+    // 6. Search Text
+    if (search) {
+      const match =
+        (lead.name && lead.name.toLowerCase().includes(search)) ||
+        (lead.niche && lead.niche.toLowerCase().includes(search)) ||
+        (lead.city && lead.city.toLowerCase().includes(search)) ||
+        (lead.address && lead.address.toLowerCase().includes(search)) ||
+        (lead.phone && lead.phone.toLowerCase().includes(search)) ||
+        (lead.instagram && lead.instagram.toLowerCase().includes(search)) ||
+        (lead.website && lead.website.toLowerCase().includes(search));
+      if (!match) return false;
+    }
+
+    return true;
+  });
+
+  // Sort
+  if (currentSort === 'score-desc') {
+    filteredLeads.sort((a, b) => (b.score || 0) - (a.score || 0));
+  } else if (currentSort === 'rating-desc') {
+    filteredLeads.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  } else if (currentSort === 'reviews-desc') {
+    filteredLeads.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
+  } else if (currentSort === 'name-asc') {
+    filteredLeads.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  } else if (currentSort === 'date-desc') {
+    filteredLeads.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  }
+
+  // Update presence hint
+  const withPhone = filteredLeads.filter(l => l.hasPhone).length;
+  const withSite = filteredLeads.filter(l => l.hasWebsite).length;
+  const withIg = filteredLeads.filter(l => l.hasInstagram).length;
+  const hintEl = document.getElementById('presence-count-hint');
+  if (hintEl) {
+    hintEl.innerText = `${filteredLeads.length} leads (${withPhone} c/ tel, ${withSite} c/ site, ${withIg} c/ IG)`;
+  }
+
+  renderTable(filteredLeads);
+  updateBulkActionBar();
+}
+
+// RENDER TABLE (8 COLUNAS COMPLETAS E ESTRUTURADAS)
+function renderTable(leads) {
+  const tbody = document.getElementById('leads-table-body');
+  tbody.innerHTML = '';
+
+  if (leads.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:50px 20px;color:#64748b;">
+      <i class="fa-solid fa-filter-circle-xmark" style="font-size:2rem;margin-bottom:10px;display:block;"></i>
+      Nenhum lead encontrado com os filtros atuais.<br>
+      <button class="btn-primary-highlight" style="margin-top:14px" onclick="openUploadModal()"><i class="fa-solid fa-cloud-arrow-up"></i> Fazer Upload de Leads do Google</button>
+    </td></tr>`;
+    return;
+  }
+
+  leads.forEach(lead => {
+    const tr = document.createElement('tr');
+    const isChecked = selectedLeadIds.has(lead.id);
+
+    const statusClass = 'status-' + (lead.status || 'Novo').replace(/\s+/g, '-');
+    const ratingDisplay = lead.rating ? lead.rating.toFixed(1) : '5.0';
+
+    // 1. Canal Mais Viável Badge
+    let channelBadgeHtml = '';
+    const channel = lead.bestContactChannel || 'phone';
+    if (channel === 'whatsapp') {
+      channelBadgeHtml = `<span class="channel-badge whatsapp" title="Melhor canal: WhatsApp direto ativo"><i class="fa-brands fa-whatsapp"></i> WhatsApp</span>`;
+    } else if (channel === 'instagram') {
+      channelBadgeHtml = `<span class="channel-badge instagram" title="Melhor canal: Direct Message no Instagram"><i class="fa-brands fa-instagram"></i> Instagram DM</span>`;
+    } else if (channel === 'phone') {
+      channelBadgeHtml = `<span class="channel-badge phone" title="Melhor canal: Ligação comercial"><i class="fa-solid fa-phone"></i> Telefone</span>`;
+    } else if (channel === 'website') {
+      channelBadgeHtml = `<span class="channel-badge website" title="Melhor canal: Formulário no site oficial"><i class="fa-solid fa-globe"></i> Site Oficial</span>`;
+    } else {
+      channelBadgeHtml = `<span class="channel-badge maps" title="Canal: Perfil no Google Maps"><i class="fa-solid fa-location-dot"></i> Google Maps</span>`;
+    }
+
+    // 2. Presença Digital (Site oficial vs Instagram)
+    const siteDomain = extractDomain(lead.website);
+    const siteHtml = lead.hasWebsite && lead.website
+      ? `<a href="${lead.website}" target="_blank" class="tag-presence-link tag-site-link" title="Acessar site: ${lead.website}"><i class="fa-solid fa-globe"></i> ${siteDomain || 'Site'}</a>`
+      : `<span class="tag-no-site" title="Oportunidade: Vender criação de website"><i class="fa-solid fa-ban"></i> Sem Site</span>`;
+
+    const igClean = lead.instagram ? lead.instagram.replace(/^@/, '') : '';
+    const igHtml = lead.hasInstagram && lead.instagram
+      ? `<a href="https://instagram.com/${igClean}" target="_blank" class="tag-presence-link tag-ig-link" title="Instagram: @${igClean}"><i class="fa-brands fa-instagram"></i> @${igClean}</a>`
+      : `<span style="font-size:0.75rem; color:#64748b; padding-left:4px;" title="Instagram não identificado"><i class="fa-brands fa-instagram" style="opacity:0.3"></i> Sem IG</span>`;
+
+    // 3. Contato & WhatsApp Direct
+    const phoneDisplay = lead.phone || 'Sem telefone';
+    const rawDigits = lead.rawPhone || (lead.phone ? lead.phone.replace(/\D/g, '') : '');
+    const waNumber = rawDigits ? (rawDigits.startsWith('55') ? rawDigits : '55' + rawDigits) : '';
+
+    tr.innerHTML = `
+      <td><input type="checkbox" class="lead-check" value="${lead.id}" ${isChecked ? 'checked' : ''} onchange="toggleSelectLead('${lead.id}', this.checked)"></td>
+      <td>
+        <div class="company-cell">
+          <div class="company-title-row">
+            <span class="company-name" onclick="openEditLeadModal('${lead.id}')" title="Clique para gerenciar lead">${lead.name}</span>
+            <span class="google-rating-pill" title="Nota no Google Maps">
+              <i class="fa-solid fa-star"></i> ${ratingDisplay} (${lead.reviewCount || 0})
+            </span>
+          </div>
+          <span class="company-sub">${lead.niche || 'Geral'}</span>
+          <span class="company-city">📍 ${lead.address ? lead.address.substring(0, 36) + (lead.address.length > 36 ? '...' : '') : (lead.city || 'Taubaté - SP')}</span>
+        </div>
+      </td>
+      <td>
+        ${channelBadgeHtml}
+      </td>
+      <td>
+        <div class="presence-tags-cell">
+          ${siteHtml}
+          ${igHtml}
+        </div>
+      </td>
+      <td>
+        <div class="phone-cell">
+          <span>${phoneDisplay}</span>
+          ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" class="presence-icon-link" title="Abrir conversa no WhatsApp"><i class="fa-brands fa-whatsapp text-green"></i></a>` : ''}
+          <button class="btn-inline-edit" onclick="navigator.clipboard.writeText('${phoneDisplay}'); showToast('Telefone copiado!');" title="Copiar telefone"><i class="fa-regular fa-copy"></i></button>
+        </div>
+      </td>
+      <td>
+        <select class="status-pill-select ${statusClass}" onchange="updateLeadStatus('${lead.id}', this.value)">
+          <option value="Novo" ${lead.status === 'Novo' ? 'selected' : ''}>Novo</option>
+          <option value="Em Contato" ${lead.status === 'Em Contato' ? 'selected' : ''}>Em Contato</option>
+          <option value="Qualificado" ${lead.status === 'Qualificado' ? 'selected' : ''}>Qualificado</option>
+          <option value="Fechado" ${lead.status === 'Fechado' ? 'selected' : ''}>Fechado</option>
+          <option value="Arquivado" ${lead.status === 'Arquivado' ? 'selected' : ''}>Arquivado</option>
+        </select>
+      </td>
+      <td>
+        <div class="score-cell">
+          <div class="score-bar">
+            <div class="score-fill" style="width: ${lead.score || 85}%;"></div>
+          </div>
+          <span class="score-num">${lead.score || 85}</span>
+        </div>
+      </td>
+      <td>
+        <div class="actions-cell">
+          <!-- WHATSAPP PROSPECTING SCRIPT ACTION -->
+          <button class="action-btn wa-btn" onclick="openWhatsAppModal('${lead.id}')" title="Gerar Prospecção Fria WhatsApp com Rapport">
+            <i class="fa-brands fa-whatsapp"></i>
+          </button>
+          <!-- INSTAGRAM / SCAN ACTION -->
+          ${lead.hasInstagram
+            ? `<a href="https://instagram.com/${igClean}" target="_blank" class="action-btn" title="Abrir perfil no Instagram" style="color:#e1306c"><i class="fa-brands fa-instagram"></i></a>`
+            : `<button class="action-btn" onclick="startInstagramQuickScan(['${lead.id}'])" title="Buscar Instagram deste lead no DuckDuckGo"><i class="fa-brands fa-instagram" style="opacity:0.5"></i></button>`
+          }
+          <!-- STAR / QUALIFY -->
+          <button class="action-btn ${lead.status === 'Qualificado' ? 'starred' : ''}" onclick="toggleQualify('${lead.id}')" title="Qualificar Lead">
+            <i class="fa-solid fa-star"></i>
+          </button>
+          <!-- HANDSHAKE / FECHADO -->
+          <button class="action-btn ${lead.status === 'Fechado' ? 'closed' : ''}" onclick="toggleDealClosed('${lead.id}')" title="Fechar Negócio">
+            <i class="fa-solid fa-handshake"></i>
+          </button>
+          <!-- EDIT / MANAGE -->
+          <button class="action-btn" onclick="openEditLeadModal('${lead.id}')" title="Editar Informações Completas">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <!-- DELETE -->
+          <button class="action-btn delete-btn" onclick="deleteLead('${lead.id}')" title="Excluir Lead">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// BULK ACTIONS
+function toggleSelectLead(id, checked) {
+  if (checked) {
+    selectedLeadIds.add(id);
+  } else {
+    selectedLeadIds.delete(id);
+  }
+  updateBulkActionBar();
+}
+
+function toggleSelectAll(master) {
+  if (master.checked) {
+    filteredLeads.forEach(l => selectedLeadIds.add(l.id));
+  } else {
+    selectedLeadIds.clear();
+  }
+  document.querySelectorAll('.lead-check').forEach(cb => {
+    cb.checked = master.checked;
+  });
+  updateBulkActionBar();
+}
+
+function clearSelection() {
+  selectedLeadIds.clear();
+  document.getElementById('check-all-leads').checked = false;
+  document.querySelectorAll('.lead-check').forEach(cb => { cb.checked = false; });
+  updateBulkActionBar();
+}
+
+function updateBulkActionBar() {
+  const bar = document.getElementById('bulk-actions-bar');
+  const countEl = document.getElementById('bulk-selected-count');
+  if (selectedLeadIds.size > 0) {
+    bar.classList.remove('hidden');
+    countEl.innerText = `${selectedLeadIds.size} lead${selectedLeadIds.size > 1 ? 's' : ''} selecionado${selectedLeadIds.size > 1 ? 's' : ''}`;
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
+async function applyBulkStatus(status) {
+  if (!status || selectedLeadIds.size === 0) return;
+  const ids = Array.from(selectedLeadIds);
+
+  try {
+    const res = await fetch('/api/leads/bulk-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, status })
+    });
+    if (res.ok) {
+      showToast(`✅ ${ids.length} leads atualizados para "${status}"`);
+      document.getElementById('bulk-status-select').value = '';
+      clearSelection();
+      loadLeads();
+    }
+  } catch (err) {
+    showToast('Erro ao atualizar status em massa');
+  }
+}
+
+async function applyBulkDelete() {
+  if (selectedLeadIds.size === 0) return;
+  const count = selectedLeadIds.size;
+  if (!confirm(`Deseja realmente excluir os ${count} leads selecionados? Esta ação não pode ser desfeita.`)) return;
+
+  const ids = Array.from(selectedLeadIds);
+  try {
+    const res = await fetch('/api/leads/bulk-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
+    });
+    if (res.ok) {
+      showToast(`🗑️ ${count} leads excluídos com sucesso.`);
+      clearSelection();
+      loadLeads();
+    }
+  } catch (err) {
+    showToast('Erro ao excluir leads em massa');
+  }
+}
+
+// UPDATE SINGLE LEAD STATUS
+async function updateLeadStatus(id, newStatus) {
+  try {
+    const res = await fetch(`/api/leads/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (res.ok) {
+      const idx = allLeads.findIndex(l => l.id === id);
+      if (idx !== -1) allLeads[idx].status = newStatus;
+      updateTabCounts();
+      applyLeadsFilters();
+      showToast(`Status atualizado: ${newStatus}`);
+    }
+  } catch (err) {
+    showToast('Erro ao atualizar status');
+  }
+}
+
+function toggleQualify(id) {
+  const lead = allLeads.find(l => l.id === id);
+  if (!lead) return;
+  const newStatus = lead.status === 'Qualificado' ? 'Novo' : 'Qualificado';
+  updateLeadStatus(id, newStatus);
+}
+
+function toggleDealClosed(id) {
+  const lead = allLeads.find(l => l.id === id);
+  if (!lead) return;
+  const newStatus = lead.status === 'Fechado' ? 'Novo' : 'Fechado';
+  updateLeadStatus(id, newStatus);
+}
+
+async function deleteLead(id) {
+  if (!confirm('Deseja realmente excluir este lead?')) return;
+  try {
+    const res = await fetch(`/api/leads/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      allLeads = allLeads.filter(l => l.id !== id);
+      selectedLeadIds.delete(id);
+      document.getElementById('sidebar-leads-count').innerText = allLeads.length;
+      updateTabCounts();
+      applyLeadsFilters();
+      showToast('Lead removido com sucesso.');
+    }
+  } catch (err) {
+    showToast('Erro ao excluir lead');
+  }
+}
+
+// DEDUPLICATE DATABASE
+async function deduplicateDatabase() {
+  if (!confirm('Deseja procurar e fundir cadastros duplicados (mesmo nome ou telefone)?')) return;
+  try {
+    showToast('🧹 Escaneando base por duplicados...');
+    const res = await fetch('/api/leads/deduplicate', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`✅ ${data.duplicatesRemoved} duplicados removidos. Restam ${data.totalRemaining} leads únicos.`);
+      loadLeads();
+    }
+  } catch (err) {
+    showToast('Erro ao remover duplicados');
+  }
+}
+
+// UPLOAD MODAL & DRAG AND DROP
+function openUploadModal() {
+  document.getElementById('upload-modal').classList.remove('hidden');
+  uploadFileContent = '';
+  document.getElementById('selected-file-name').classList.add('hidden');
+  document.getElementById('upload-preview-container').classList.add('hidden');
+  document.getElementById('btn-confirm-upload').disabled = true;
+}
+
+function closeUploadModal() {
+  document.getElementById('upload-modal').classList.add('hidden');
+}
+
+function switchUploadMode(mode) {
+  const tabFile = document.getElementById('tab-file-mode');
+  const tabSheets = document.getElementById('tab-sheets-mode');
+  const tabText = document.getElementById('tab-text-mode');
+
+  if (tabFile) tabFile.classList.toggle('active', mode === 'file');
+  if (tabSheets) tabSheets.classList.toggle('active', mode === 'sheets');
+  if (tabText) tabText.classList.toggle('active', mode === 'text');
+
+  const zoneFile = document.getElementById('file-drop-zone');
+  const zoneSheets = document.getElementById('sheets-input-zone');
+  const zoneText = document.getElementById('text-input-zone');
+
+  if (zoneFile) zoneFile.classList.toggle('hidden', mode !== 'file');
+  if (zoneSheets) zoneSheets.classList.toggle('hidden', mode !== 'sheets');
+  if (zoneText) zoneText.classList.toggle('hidden', mode !== 'text');
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('file-drop-zone').classList.add('dragover');
+}
+
+function handleDragLeave(e) {
+  e.preventDefault();
+  document.getElementById('file-drop-zone').classList.remove('dragover');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('file-drop-zone').classList.remove('dragover');
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+    processSelectedFile(e.dataTransfer.files[0]);
+  }
+}
+
+function handleFileSelected(e) {
+  if (e.target.files && e.target.files[0]) {
+    processSelectedFile(e.target.files[0]);
+  }
+}
+
+function processSelectedFile(file) {
+  uploadFileName = file.name;
+  uploadFileType = file.name.endsWith('.json') ? 'json' : 'csv';
+
+  const badge = document.getElementById('selected-file-name');
+  badge.innerHTML = `<i class="fa-solid fa-file-csv"></i> <strong>${file.name}</strong> (${(file.size / 1024).toFixed(1)} KB)`;
+  badge.classList.remove('hidden');
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    uploadFileContent = evt.target.result;
+    parseAndPreviewUpload(uploadFileContent, uploadFileType);
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+function previewRawText() {
+  const text = document.getElementById('raw-upload-textarea').value.trim();
+  if (!text) {
+    showToast('Cole o conteúdo no campo de texto antes de analisar');
+    return;
+  }
+  uploadFileContent = text;
+  uploadFileType = text.startsWith('[') || text.startsWith('{') ? 'json' : 'csv';
+  parseAndPreviewUpload(uploadFileContent, uploadFileType);
+}
+
+function parseAndPreviewUpload(content, type) {
+  let sampleRows = [];
+  let totalCount = 0;
+
+  try {
+    if (type === 'json' || content.trim().startsWith('[') || content.trim().startsWith('{')) {
+      const parsed = JSON.parse(content);
+      const arr = Array.isArray(parsed) ? parsed : (parsed.data || parsed.results || [parsed]);
+      totalCount = arr.length;
+      sampleRows = arr.slice(0, 4);
+    } else {
+      // Basic CSV splitting for preview
+      const lines = content.split(/\r?\n/).filter(Boolean);
+      totalCount = Math.max(lines.length - 1, 0);
+      const headerLine = lines[0] || '';
+      const delim = headerLine.includes(';') ? ';' : ',';
+      const headers = headerLine.split(delim).map(h => h.replace(/["']/g, '').trim());
+
+      for (let i = 1; i < Math.min(lines.length, 5); i++) {
+        const parts = lines[i].split(delim);
+        const obj = {};
+        headers.forEach((h, idx) => {
+          obj[h] = parts[idx] ? parts[idx].replace(/["']/g, '').trim() : '';
+        });
+        sampleRows.push(obj);
+      }
+    }
+
+    if (totalCount > 0) {
+      document.getElementById('upload-preview-container').classList.remove('hidden');
+      document.getElementById('preview-count-label').innerHTML = `<strong>${totalCount}</strong> leads identificados no arquivo`;
+      document.getElementById('btn-confirm-upload').disabled = false;
+
+      // Render sample table
+      const pBody = document.getElementById('preview-table-body');
+      pBody.innerHTML = '';
+      sampleRows.forEach(row => {
+        const tr = document.createElement('tr');
+        const keys = Object.keys(row);
+        const nameVal = row.title || row.name || row.nome || row.company || row[keys[0]] || 'Sem nome';
+        const phoneVal = row.phone || row.telefone || row.phoneNumber || '—';
+        const ratingVal = row.totalScore || row.rating || row.nota || row.stars || '5.0';
+        const siteVal = row.website || row.site || row.url || '—';
+        const addrVal = row.address || row.endereco || row.full_address || '—';
+
+        tr.innerHTML = `
+          <td><strong>${nameVal}</strong></td>
+          <td>${phoneVal}</td>
+          <td>⭐ ${ratingVal}</td>
+          <td>${siteVal !== '—' ? 'Sim' : 'Não'}</td>
+          <td>${addrVal.substring(0, 30)}...</td>
+        `;
+        pBody.appendChild(tr);
+      });
+      showToast(`Arquivo analisado: ${totalCount} registros prontos para importação!`);
+    } else {
+      showToast('Nenhum registro legível encontrado.');
+    }
+  } catch (err) {
+    showToast('Erro ao interpretar o formato do arquivo: ' + err.message);
+  }
+}
+
+async function processUploadExecution() {
+  if (!uploadFileContent) {
+    showToast('Selecione ou cole um arquivo primeiro.');
+    return;
+  }
+
+  const btn = document.getElementById('btn-confirm-upload');
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processando & Normalizando...`;
+
+  const defaultNiche = document.getElementById('upload-default-nicho').value.trim() || 'Clínicas de Odontologia';
+  const deduplicateOption = document.getElementById('upload-dedup-select').value;
+
+  try {
+    const res = await fetch('/api/leads/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileContent: uploadFileContent,
+        fileType: uploadFileType,
+        defaultNiche,
+        deduplicateOption
+      })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      closeUploadModal();
+      loadLeads();
+      switchPage('leads');
+      showToast(`🎉 ${data.importedCount} novos leads importados! (${data.updatedCount} atualizados, ${data.skippedCount} duplicados ignorados)`);
+    } else {
+      showToast('Erro: ' + (data.error || 'Falha ao processar arquivo'));
+    }
+  } catch (err) {
+    showToast('Erro de conexão ao enviar o arquivo.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Confirmar & Importar Leads`;
+  }
+}
+
+// EDIT / NEW LEAD MODAL
+function openNewLeadModal() {
+  editingLeadId = null;
+  document.getElementById('edit-lead-title').innerText = 'Cadastrar Novo Lead';
+  document.getElementById('edit-lead-subtitle').innerText = 'Insira os dados da empresa para prospecção';
+  document.getElementById('edit-lead-id').value = '';
+  document.getElementById('edit-lead-name').value = '';
+  document.getElementById('edit-lead-niche').value = 'Clínicas de Odontologia';
+  document.getElementById('edit-lead-phone').value = '';
+  document.getElementById('edit-lead-status').value = 'Novo';
+  document.getElementById('edit-lead-rating').value = '5.0';
+  document.getElementById('edit-lead-reviews').value = '50';
+  document.getElementById('edit-lead-website').value = '';
+  document.getElementById('edit-lead-instagram').value = '';
+  document.getElementById('edit-lead-address').value = '';
+  document.getElementById('edit-lead-city').value = 'Bela Vista, São Paulo - SP';
+  document.getElementById('edit-lead-notes').value = '';
+  document.getElementById('btn-delete-from-modal').classList.add('hidden');
+
+  document.getElementById('edit-lead-modal').classList.remove('hidden');
+}
+
+function openEditLeadModal(id) {
+  const lead = allLeads.find(l => l.id === id);
+  if (!lead) return;
+
+  editingLeadId = id;
+  document.getElementById('edit-lead-title').innerText = 'Editar Lead & Follow-up';
+  document.getElementById('edit-lead-subtitle').innerText = `Gerenciando dados de: ${lead.name}`;
+  document.getElementById('edit-lead-id').value = lead.id;
+  document.getElementById('edit-lead-name').value = lead.name || '';
+  document.getElementById('edit-lead-niche').value = lead.niche || 'Dentista';
+  document.getElementById('edit-lead-phone').value = lead.phone || '';
+  document.getElementById('edit-lead-status').value = lead.status || 'Novo';
+  document.getElementById('edit-lead-rating').value = lead.rating || 5.0;
+  document.getElementById('edit-lead-reviews').value = lead.reviewCount || 0;
+  document.getElementById('edit-lead-website').value = lead.website || '';
+  document.getElementById('edit-lead-instagram').value = lead.instagram || '';
+  document.getElementById('edit-lead-address').value = lead.address || '';
+  document.getElementById('edit-lead-city').value = lead.city || 'Bela Vista, SP';
+  document.getElementById('edit-lead-notes').value = lead.notes || '';
+  document.getElementById('btn-delete-from-modal').classList.remove('hidden');
+
+  document.getElementById('edit-lead-modal').classList.remove('hidden');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-lead-modal').classList.add('hidden');
+}
+
+async function saveLeadEdit() {
+  const name = document.getElementById('edit-lead-name').value.trim();
+  if (!name) {
+    showToast('O nome da empresa é obrigatório.');
+    return;
+  }
+
+  const payload = {
+    name,
+    niche: document.getElementById('edit-lead-niche').value.trim(),
+    phone: document.getElementById('edit-lead-phone').value.trim(),
+    status: document.getElementById('edit-lead-status').value,
+    rating: parseFloat(document.getElementById('edit-lead-rating').value) || 5.0,
+    reviewCount: parseInt(document.getElementById('edit-lead-reviews').value) || 0,
+    website: document.getElementById('edit-lead-website').value.trim(),
+    instagram: document.getElementById('edit-lead-instagram').value.trim(),
+    address: document.getElementById('edit-lead-address').value.trim(),
+    city: document.getElementById('edit-lead-city').value.trim(),
+    notes: document.getElementById('edit-lead-notes').value.trim()
+  };
+
+  try {
+    if (editingLeadId) {
+      // Update
+      const res = await fetch(`/api/leads/${editingLeadId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        showToast('Lead atualizado com sucesso!');
+        closeEditModal();
+        loadLeads();
+      }
+    } else {
+      // Create Manual
+      const res = await fetch('/api/leads/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        showToast('Novo lead cadastrado com sucesso!');
+        closeEditModal();
+        loadLeads();
+      }
+    }
+  } catch (err) {
+    showToast('Erro ao salvar lead.');
+  }
+}
+
+function deleteCurrentEditLead() {
+  if (editingLeadId) {
+    closeEditModal();
+    deleteLead(editingLeadId);
+  }
+}
+
+// WHATSAPP COLD PROSPECTING MODAL
+async function openWhatsAppModal(id) {
+  currentLeadForWhatsApp = allLeads.find(l => l.id === id);
+  if (!currentLeadForWhatsApp) return;
+
+  const modal = document.getElementById('whatsapp-modal');
+  modal.classList.remove('hidden');
+
+  document.getElementById('whatsapp-lead-subtitle').innerText = `${currentLeadForWhatsApp.niche || 'Dentista'} • ${currentLeadForWhatsApp.city || 'Bela Vista, SP'}`;
+  document.getElementById('modal-rep-name').innerText = currentLeadForWhatsApp.name;
+  document.getElementById('modal-rep-score').innerText = `⭐ ${currentLeadForWhatsApp.rating ? currentLeadForWhatsApp.rating.toFixed(1) : '4.9'} no Google (${currentLeadForWhatsApp.reviewCount || 100}+ avaliações)`;
+  document.getElementById('modal-rep-phone').innerText = currentLeadForWhatsApp.phone || 'Sem telefone';
+
+  try {
+    const res = await fetch(`/api/templates/${id}`);
+    const data = await res.json();
+    currentLeadTemplates = data.templates;
+    activeTemplateIndex = 0;
+    renderActiveTemplate();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function selectScriptTab(index) {
+  activeTemplateIndex = index;
+  document.querySelectorAll('.script-tab').forEach((tab, i) => {
+    tab.classList.toggle('active', i === index);
+  });
+  renderActiveTemplate();
+}
+
+function renderActiveTemplate() {
+  if (!currentLeadTemplates || currentLeadTemplates.length === 0) return;
+  const tpl = currentLeadTemplates[activeTemplateIndex];
+  document.getElementById('script-objective-label').innerText = tpl.objective;
+  document.getElementById('whatsapp-message-text').value = tpl.message;
+}
+
+function closeWhatsAppModal() {
+  document.getElementById('whatsapp-modal').classList.add('hidden');
+}
+
+function copyWhatsAppMessage() {
+  const text = document.getElementById('whatsapp-message-text').value;
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('📋 Mensagem copiada para a área de transferência!');
+  });
+}
+
+function openDirectWhatsApp() {
+  const text = document.getElementById('whatsapp-message-text').value;
+  const rawPhone = currentLeadForWhatsApp.rawPhone || (currentLeadForWhatsApp.phone ? currentLeadForWhatsApp.phone.replace(/\D/g, '') : '');
+
+  let fullPhone = rawPhone;
+  if (fullPhone.length === 10 || fullPhone.length === 11) {
+    fullPhone = '55' + fullPhone;
+  }
+
+  const url = `https://wa.me/${fullPhone}?text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank');
+  markAsContacted();
+}
+
+function markAsContacted() {
+  if (currentLeadForWhatsApp) {
+    updateLeadStatus(currentLeadForWhatsApp.id, 'Em Contato');
+    closeWhatsAppModal();
+  }
+}
+
+// EXPORT DROPDOWN TOGGLE
+function toggleExportMenu() {
+  const menu = document.getElementById('export-dropdown');
+  menu.classList.toggle('hidden');
+}
+
+document.addEventListener('click', (e) => {
+  const wrapper = document.querySelector('.dropdown-wrapper');
+  if (wrapper && !wrapper.contains(e.target)) {
+    const dropdown = document.getElementById('export-dropdown');
+    if (dropdown) dropdown.classList.add('hidden');
+  }
+});
+
+// GOOGLE SHEETS DIRECT IMPORT
+async function importFromGoogleSheets() {
+  const urlInput = document.getElementById('sheets-url-input');
+  const sheetUrl = urlInput ? urlInput.value.trim() : '';
+
+  if (!sheetUrl) {
+    showToast('Por favor, cole a URL pública da planilha do Google.');
+    return;
+  }
+
+  const defaultNiche = document.getElementById('upload-default-nicho').value.trim() || 'Google Planilhas';
+  const deduplicateOption = document.getElementById('upload-dedup-select').value;
+
+  showToast('📥 Baixando e organizando dados do Google Planilhas...');
+  try {
+    const res = await fetch('/api/leads/google-sheets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sheetUrl, defaultNiche, deduplicateOption })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      closeUploadModal();
+      loadLeads();
+      switchPage('leads');
+      showToast(`🎉 Planilha sincronizada! ${data.importedCount} novos leads adicionados (${data.updatedCount} atualizados).`);
+    } else {
+      showToast('Erro: ' + (data.error || 'Falha ao sincronizar planilha'));
+    }
+  } catch (err) {
+    showToast('Erro ao conectar com Google Planilhas: ' + err.message);
+  }
+}
+
+// INSTAGRAM & WEB QUICK SCAN
+async function startInstagramQuickScan(specificIds = null) {
+  const btn = document.getElementById('btn-quick-scan-ig');
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Varrendo Web...`;
+  }
+
+  showToast('⚡ Varrendo web e DuckDuckGo por perfis do Instagram e WhatsApp...');
+
+  try {
+    const targetIds = specificIds || (selectedLeadIds.size > 0 ? Array.from(selectedLeadIds) : null);
+    const res = await fetch('/api/leads/quick-scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ids: targetIds,
+        limit: 20
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`✨ Varredura concluída! ${data.enrichedCount} leads enriquecidos com Instagram e novos canais.`);
+      loadLeads();
+    } else {
+      showToast('Erro na varredura: ' + (data.error || 'Tente novamente'));
+    }
+  } catch (err) {
+    showToast('Erro de comunicação na varredura: ' + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+  }
+}
+
+function scanSelectedLeads() {
+  if (selectedLeadIds.size === 0) {
+    showToast('Selecione ao menos um lead para escanear.');
+    return;
+  }
+  startInstagramQuickScan(Array.from(selectedLeadIds));
+}
+
+// SETTINGS & SUPABASE MODAL
+async function openSettingsModal() {
+  const modal = document.getElementById('settings-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+
+  try {
+    const res = await fetch('/api/supabase/config');
+    const data = await res.json();
+    const badge = document.getElementById('supabase-status-badge');
+    const urlInput = document.getElementById('supabase-url-input');
+
+    if (data.connected) {
+      if (badge) {
+        badge.className = 'supabase-status-pill connected';
+        badge.innerHTML = '<i class="fa-solid fa-circle-check"></i> Conectado';
+      }
+      if (urlInput && data.url) urlInput.value = data.url;
+    } else {
+      if (badge) {
+        badge.className = 'supabase-status-pill';
+        badge.innerText = 'Não configurado';
+      }
+    }
+  } catch (e) {
+    console.error('Erro ao verificar Supabase:', e);
+  }
+}
+
+function closeSettingsModal() {
+  const modal = document.getElementById('settings-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function saveSupabaseConfig() {
+  const url = document.getElementById('supabase-url-input').value.trim();
+  const key = document.getElementById('supabase-key-input').value.trim();
+
+  if (!url || !key) {
+    showToast('Preencha a URL e a Anon Key do Supabase.');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/supabase/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, key })
+    });
+    if (res.ok) {
+      showToast('✅ Conexão Supabase salva com sucesso!');
+      openSettingsModal();
+    } else {
+      showToast('Erro ao salvar configuração.');
+    }
+  } catch (e) {
+    showToast('Erro: ' + e.message);
+  }
+}
+
+async function syncLeadsToSupabase() {
+  const btn = document.getElementById('btn-sync-supabase');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sincronizando...`;
+  }
+
+  try {
+    showToast('☁️ Enviando base de leads para o Supabase...');
+    const res = await fetch('/api/supabase/sync', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`🎉 Sucesso! ${data.count} leads sincronizados com o Supabase.`);
+    } else {
+      showToast('Falha na sincronização: ' + (data.error || 'Verifique as permissões da tabela'));
+    }
+  } catch (e) {
+    showToast('Erro de sincronização: ' + e.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar Leads para Supabase`;
+    }
+  }
+}
+
+function openSupportWhatsApp() {
+  window.open('https://wa.me/5511999999999?text=Ol%C3%A1%2C%20preciso%20de%20suporte%20no%20Kaptar', '_blank');
+}
+
+// TOAST HELPER
+let toastTimeout = null;
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  const toastText = document.getElementById('toast-text');
+  toastText.innerText = message;
+  toast.classList.remove('hidden');
+
+  if (toastTimeout) clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => {
+    toast.classList.add('hidden');
+  }, 3500);
+}

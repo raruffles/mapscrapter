@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KAPTAR — Google Data Scraper & CRM de Prospecção</title>
+  <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Leaflet CSS for Maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">
+          <svg class="stag-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v4M8 4l2 3M16 4l-2 3M6 8l4 3M18 8l-4 3M12 11c-2.5 0-4.5 2-4.5 4.5v1.5a4.5 4.5 0 0 0 9 0v-1.5C16.5 13 14.5 11 12 11z"/>
+            <path d="M9 16v1a3 3 0 0 0 6 0v-1"/>
+          </svg>
+        </div>
+        <span class="brand-title">KAPTAR</span>
+      </div>
+
+      <nav class="sidebar-menu">
+        <button class="nav-item active" id="nav-buscar-leads" onclick="switchPage('buscar')">
+          <i class="fa-solid fa-bullseye"></i>
+          <span>Buscar Leads</span>
+        </button>
+        <button class="nav-item" id="nav-leads" onclick="switchPage('leads')">
+          <i class="fa-solid fa-users"></i>
+          <span>Leads & CRM</span>
+          <span class="badge-count" id="sidebar-leads-count">15</span>
+        </button>
+        <button class="nav-item" onclick="openUploadModal()">
+          <i class="fa-solid fa-cloud-arrow-up text-primary"></i>
+          <span>Upload Google</span>
+          <span class="badge-new">NOVO</span>
+        </button>
+        <button class="nav-item" onclick="openSettingsModal()">
+          <i class="fa-solid fa-gear"></i>
+          <span>Configurações</span>
+        </button>
+
+        <div class="menu-divider-label">NO KAPTAR APP</div>
+        <button class="nav-item sub-item" onclick="showToast('Módulo de automação ativo e monitorando.')">
+          <i class="fa-solid fa-robot text-orange"></i>
+          <span>Automação</span>
+          <span class="dot-online"></span>
+        </button>
+        <button class="nav-item sub-item" onclick="showToast('S-Zap conectado ao WhatsApp!')">
+          <i class="fa-brands fa-whatsapp text-orange"></i>
+          <span>S-zap</span>
+          <span class="dot-online"></span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="promo-card">
+          <div class="promo-brand">
+            <i class="fa-solid fa-bolt-lightning text-white"></i>
+            <strong>Google Data Scraper</strong>
+          </div>
+          <p>Local: <code>D:\sites-vibe-code\data-scrapter-google</code></p>
+          <button class="btn-promo" onclick="openUploadModal()">Fazer Upload de Dados</button>
+          <span class="promo-sub">CSV & JSON Suportados</span>
+        </div>
+
+        <button class="btn-support" onclick="openSupportWhatsApp()">
+          <i class="fa-brands fa-whatsapp"></i> Contate o suporte
+        </button>
+
+        <div class="author-credits">
+          <span>v5.3 Pro</span>
+          <span>By Rick Sander • Dev Raphael</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <!-- HEADER -->
+      <header class="top-header">
+        <h1 class="page-title" id="page-title-display">Buscar Leads</h1>
+        <div class="header-right">
+          <button class="btn-header-action" onclick="openUploadModal()">
+            <i class="fa-solid fa-file-arrow-up"></i> Upload Google Maps
+          </button>
+          <span class="header-link" onclick="openSettingsModal()"><i class="fa-solid fa-database"></i> D:\sites-vibe-code</span>
+          <span class="header-status"><span class="pulse-dot"></span> Salvo localmente</span>
+        </div>
+      </header>
+
+      <!-- PAGE 1: BUSCAR LEADS (CAPTAÇÃO) -->
+      <div class="page-container active" id="page-buscar">
+        <div class="search-form-grid">
+          <!-- CARD LOCALIZAÇÃO COM MAPA -->
+          <div class="card map-card">
+            <div class="card-header flex-between">
+              <div class="section-label">
+                <i class="fa-solid fa-location-dot"></i> LOCALIZAÇÃO — CLIQUE NO MAPA PARA MARCAR ONDE BUSCAR
+              </div>
+              <span class="badge-pins">1 pin ativo</span>
+            </div>
+
+            <!-- REGION SEARCH INPUT -->
+            <div class="location-search-bar">
+              <i class="fa-solid fa-magnifying-glass search-icon"></i>
+              <input type="text" id="region-input" placeholder="Digite uma cidade ou bairro (ex: Bela Vista, São Paulo - SP)" value="Bela Vista, São Paulo - SP">
+              <button class="btn-locate" onclick="searchRegionOnMap()"><i class="fa-solid fa-crosshairs"></i> Localizar</button>
+            </div>
+
+            <!-- MAP CONTAINER -->
+            <div id="map" class="interactive-map"></div>
+
+            <div class="map-footer flex-between">
+              <div class="map-legend">
+                <span><span class="legend-dot yellow"></span> prospectando</span>
+                <span><span class="legend-dot green"></span> área prospectada</span>
+              </div>
+              <div class="radius-control">
+                <div class="radius-label">
+                  <i class="fa-solid fa-circle-nodes"></i>
+                  <span>Pin 1 Raio: <strong id="radius-val">2</strong> km</span>
+                </div>
+                <input type="range" id="radius-slider" min="1" max="50" value="2" oninput="updateRadius(this.value)">
+              </div>
+            </div>
+          </div>
+
+          <!-- CARD CATEGORIAS / SEGMENTOS -->
+          <div class="card categories-card">
+            <div class="card-header flex-between">
+              <div class="section-label">CATEGORIAS / SEGMENTOS</div>
+              <div class="selected-counter">
+                <span id="selected-niche-count">1 selecionada</span>
+                <button class="btn-clear-selection" onclick="clearSelectedNiches()">Limpar</button>
+              </div>
+            </div>
+
+            <!-- SELECTED NICHES TAGS -->
+            <div class="selected-tags-container" id="selected-tags">
+              <span class="tag-pill selected" data-niche="Clínicas de Odontologia">
+                Clínicas de Odontologia <i class="fa-solid fa-xmark remove-tag" onclick="removeNiche('Clínicas de Odontologia')"></i>
+              </span>
+            </div>
+
+            <!-- CUSTOM NICHE INPUT -->
+            <div class="niche-search-input-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="custom-niche-input" placeholder="Toque para escolher os nichos ou digite um novo e pressione Enter..." onkeydown="handleCustomNicheKey(event)">
+              <button class="btn-add-tag" onclick="addCustomNiche()"><i class="fa-solid fa-plus"></i></button>
+            </div>
+
+            <!-- PRESET CATEGORIES ACCORDION / GROUPS -->
+            <div class="categories-presets-list">
+              <div class="preset-group">
+                <div class="group-title"><i class="fa-solid fa-tooth"></i> SAÚDE & BEM-ESTAR</div>
+                <div class="pills-grid">
+                  <button class="pill-chip active" onclick="toggleNicheChip(this, 'Clínicas de Odontologia')">Clínicas de Odontologia</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Dentista')">Dentista</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Harmonização Orofacial')">Harmonização Orofacial</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Clínica Médica')">Clínica Médica</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Fisioterapia')">Fisioterapia</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Estética & Beleza')">Estética & Beleza</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Psicologia')">Psicologia</button>
+                </div>
+              </div>
+
+              <div class="preset-group">
+                <div class="group-title"><i class="fa-solid fa-bag-shopping"></i> VAREJO</div>
+                <div class="pills-grid">
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Loja de roupas')">Loja de roupas</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Loja de calçados')">Loja de calçados</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Joalheria')">Joalheria</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Ótica')">Ótica</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Livraria')">Livraria</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Móveis e decoração')">Móveis e decoração</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Farmácia de manipulação')">Farmácia de manipulação</button>
+                </div>
+              </div>
+
+              <div class="preset-group">
+                <div class="group-title"><i class="fa-solid fa-hammer"></i> CONSTRUÇÃO & REFORMA</div>
+                <div class="pills-grid">
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Eletricista')">Eletricista</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Encanador')">Encanador</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Pintor')">Pintor</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Serralheria')">Serralheria</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Marmoraria')">Marmoraria</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Vidraçaria')">Vidraçaria</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ROW SETTINGS: FONTE, FILTRO, MAX RESULTADOS -->
+          <div class="card settings-row-card">
+            <div class="settings-cols">
+              <!-- FONTE DE DADOS -->
+              <div class="setting-item">
+                <div class="section-label">FONTE DE DADOS <i class="fa-regular fa-circle-question info-icon" title="Selecione o provedor de extração de dados"></i></div>
+                <div class="custom-select-wrapper">
+                  <select id="data-source-select">
+                    <option value="Google Maps / Web Live Scraper" selected>Google Maps / Web Live Scraper (Recomendado)</option>
+                    <option value="OpenStreetMap (Gratuito)">OpenStreetMap (Gratuito)</option>
+                    <option value="Apify Integration">Apify Integration (Google Places)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- FILTRO DE CAPTURA -->
+              <div class="setting-item">
+                <div class="section-label">FILTRO DE CAPTURA <i class="fa-regular fa-circle-question info-icon" title="Filtra contatos com os canais selecionados"></i></div>
+                <div class="filter-instruction">Filtro opcional — mantém os leads que tenham pelo menos um dos itens marcados. Deixe tudo desmarcado para trazer todos.</div>
+                <div class="filter-chips-row">
+                  <button class="filter-chip" id="filter-phone" onclick="toggleFilterChip(this)">
+                    <i class="fa-solid fa-phone"></i> Telefone
+                  </button>
+                  <button class="filter-chip" id="filter-site" onclick="toggleFilterChip(this)">
+                    <i class="fa-solid fa-globe"></i> Site
+                  </button>
+                  <button class="filter-chip" id="filter-instagram" onclick="toggleFilterChip(this)">
+                    <i class="fa-brands fa-instagram"></i> Instagram
+                  </button>
+                </div>
+              </div>
+
+              <!-- MÁX RESULTADOS -->
+              <div class="setting-item">
+                <div class="section-label flex-between">
+                  <span>MÁX. RESULTADOS: <strong id="max-results-val">15</strong></span>
+                </div>
+                <input type="range" id="max-results-slider" min="5" max="100" value="15" oninput="document.getElementById('max-results-val').innerText = this.value">
+                <div class="range-limits">
+                  <span>5</span>
+                  <span>15</span>
+                  <span>50</span>
+                  <span>100</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTION BUTTON BAR -->
+        <div class="search-action-bar">
+          <button class="btn-execute-scrape" id="btn-start-scrape" onclick="executeRealScraper()">
+            <i class="fa-solid fa-bolt"></i>
+            <span>BUSCAR LEADS REAIS AGORA</span>
+          </button>
+          <div id="scrape-status-message" class="scrape-status-pill hidden">
+            <i class="fa-solid fa-spinner fa-spin"></i> Conectando à base de dados e extraindo leads...
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE 2: LEADS (FOLLOW-UP / CRM) -->
+      <div class="page-container" id="page-leads">
+        <!-- TOP ACTIONS & MANAGEMENT TOOLBAR -->
+        <div class="leads-toolbar flex-between">
+          <!-- TABS PIPELINE -->
+          <div class="crm-tabs">
+            <button class="crm-tab active" data-tab="ativos" onclick="filterByTab('ativos')">
+              <i class="fa-solid fa-list-check"></i> Ativos <span class="tab-badge" id="tab-count-ativos">15</span>
+            </button>
+            <button class="crm-tab" data-tab="qualificados" onclick="filterByTab('qualificados')">
+              <i class="fa-solid fa-star"></i> Qualificados <span class="tab-badge" id="tab-count-qualificados">0</span>
+            </button>
+            <button class="crm-tab" data-tab="em_contato" onclick="filterByTab('em_contato')">
+              <i class="fa-brands fa-whatsapp"></i> Em Contato <span class="tab-badge" id="tab-count-em_contato">0</span>
+            </button>
+            <button class="crm-tab" data-tab="fechados" onclick="filterByTab('fechados')">
+              <i class="fa-solid fa-handshake"></i> Fechados <span class="tab-badge" id="tab-count-fechados">0</span>
+            </button>
+            <button class="crm-tab" data-tab="arquivados" onclick="filterByTab('arquivados')">
+              <i class="fa-solid fa-box-archive"></i> Arquivados <span class="tab-badge" id="tab-count-arquivados">0</span>
+            </button>
+          </div>
+
+          <!-- DATA MANAGEMENT BUTTONS -->
+          <div class="toolbar-buttons">
+            <button class="btn-scan-instagram" id="btn-quick-scan-ig" onclick="startInstagramQuickScan()" title="Buscar perfis no Instagram e WhatsApp via DuckDuckGo">
+              <i class="fa-brands fa-instagram"></i> ⚡ Varredura Instagram
+            </button>
+            <button class="btn-primary-highlight" onclick="openUploadModal()">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Upload Google
+            </button>
+            <button class="btn-secondary" onclick="openNewLeadModal()">
+              <i class="fa-solid fa-plus"></i> Novo Lead
+            </button>
+            <button class="btn-secondary" onclick="deduplicateDatabase()" title="Localizar e fundir cadastros repetidos">
+              <i class="fa-solid fa-broom"></i> Limpar Duplicados
+            </button>
+            <div class="dropdown-wrapper">
+              <button class="btn-secondary" onclick="toggleExportMenu()">
+                <i class="fa-solid fa-download"></i> Exportar <i class="fa-solid fa-chevron-down" style="font-size:0.7rem"></i>
+              </button>
+              <div class="export-dropdown hidden" id="export-dropdown">
+                <a href="/api/export-csv" download><i class="fa-solid fa-file-csv"></i> Exportar CSV</a>
+                <a href="/api/export-json" download><i class="fa-solid fa-file-code"></i> Exportar JSON</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SMART MANAGEMENT TABS -->
+        <div class="smart-management-tabs">
+          <button class="smart-tab active" data-smart="all" onclick="filterBySmartTab('all')">
+            <i class="fa-solid fa-layer-group"></i> Todos os Leads <span class="smart-badge" id="smart-count-all">0</span>
+          </button>
+          <button class="smart-tab" data-smart="high_rating" onclick="filterBySmartTab('high_rating')">
+            <i class="fa-solid fa-star text-yellow"></i> Nota Alta (4.8+) <span class="smart-badge" id="smart-count-high-rating">0</span>
+          </button>
+          <button class="smart-tab" data-smart="with_site" onclick="filterBySmartTab('with_site')">
+            <i class="fa-solid fa-globe text-blue"></i> Com Site <span class="smart-badge" id="smart-count-with-site">0</span>
+          </button>
+          <button class="smart-tab" data-smart="no_site" onclick="filterBySmartTab('no_site')">
+            <i class="fa-solid fa-ban text-red"></i> Sem Site (Oportunidade) <span class="smart-badge" id="smart-count-no-site">0</span>
+          </button>
+          <button class="smart-tab" data-smart="with_instagram" onclick="filterBySmartTab('with_instagram')">
+            <i class="fa-brands fa-instagram text-purple"></i> Com Instagram <span class="smart-badge" id="smart-count-with-instagram">0</span>
+          </button>
+          <button class="smart-tab" data-smart="viavel_whatsapp" onclick="filterBySmartTab('viavel_whatsapp')">
+            <i class="fa-brands fa-whatsapp text-green"></i> Viável WhatsApp <span class="smart-badge" id="smart-count-viavel-whatsapp">0</span>
+          </button>
+          <button class="smart-tab" data-smart="viavel_instagram" onclick="filterBySmartTab('viavel_instagram')">
+            <i class="fa-solid fa-comments text-purple"></i> Viável Instagram DM <span class="smart-badge" id="smart-count-viavel-instagram">0</span>
+          </button>
+        </div>
+
+        <!-- BULK ACTIONS FLOATING BAR (Appears when checkboxes are selected) -->
+        <div class="bulk-actions-bar hidden" id="bulk-actions-bar">
+          <div class="bulk-info">
+            <i class="fa-solid fa-circle-check text-primary"></i>
+            <span id="bulk-selected-count">0 leads selecionados</span>
+          </div>
+          <div class="bulk-controls">
+            <button class="btn-bulk-scan" onclick="scanSelectedLeads()">
+              <i class="fa-brands fa-instagram"></i> Varredura nos Selecionados
+            </button>
+            <span class="bulk-label">Alterar Status:</span>
+            <select id="bulk-status-select" class="bulk-select" onchange="applyBulkStatus(this.value)">
+              <option value="">Escolher Status...</option>
+              <option value="Novo">Novo</option>
+              <option value="Em Contato">Em Contato</option>
+              <option value="Qualificado">Qualificado</option>
+              <option value="Fechado">Fechado</option>
+              <option value="Arquivado">Arquivado</option>
+            </select>
+            <button class="btn-bulk-delete" onclick="applyBulkDelete()">
+              <i class="fa-solid fa-trash-can"></i> Excluir Selecionados
+            </button>
+            <button class="btn-bulk-clear" onclick="clearSelection()">
+              Desmarcar Todos
+            </button>
+          </div>
+        </div>
+
+        <!-- SEARCH & ADVANCED FILTERS BAR -->
+        <div class="leads-filters-card">
+          <div class="filters-main-row">
+            <div class="search-leads-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="search-leads-input" placeholder="Buscar por nome, nicho, telefone, cidade..." oninput="applyLeadsFilters()">
+            </div>
+
+            <div class="filter-select-box">
+              <select id="filter-score-select" onchange="applyLeadsFilters()">
+                <option value="all">Todos os scores</option>
+                <option value="high">Score 95+ (Excelente)</option>
+                <option value="medium">Score 90-94 (Bom)</option>
+                <option value="low">Score &lt; 90</option>
+              </select>
+            </div>
+
+            <div class="filter-select-box">
+              <select id="filter-status-select" onchange="applyLeadsFilters()">
+                <option value="all">Todos os status</option>
+                <option value="Novo">Novo</option>
+                <option value="Em Contato">Em Contato</option>
+                <option value="Qualificado">Qualificado</option>
+                <option value="Fechado">Fechado</option>
+                <option value="Arquivado">Arquivado</option>
+              </select>
+            </div>
+
+            <div class="filter-select-box">
+              <select id="sort-select" onchange="applySort(this.value)">
+                <option value="score-desc">Ordenar: Maior Score</option>
+                <option value="rating-desc">Ordenar: Melhor Avaliação</option>
+                <option value="reviews-desc">Ordenar: Mais Avaliações</option>
+                <option value="name-asc">Ordenar: Nome (A-Z)</option>
+                <option value="date-desc">Ordenar: Mais Recentes</option>
+              </select>
+            </div>
+
+            <button class="btn-scan" onclick="startInstagramQuickScan()"><i class="fa-brands fa-instagram"></i> Varredura Web</button>
+          </div>
+
+          <!-- PRESENCE PILLS -->
+          <div class="presence-pills-row">
+            <span class="presence-label">Filtro Rápido:</span>
+            <button class="presence-chip" data-filter="phone" onclick="togglePresenceFilter(this, 'phone')">
+              <i class="fa-solid fa-phone"></i> Tem telefone
+            </button>
+            <button class="presence-chip" data-filter="site" onclick="togglePresenceFilter(this, 'site')">
+              <i class="fa-solid fa-globe"></i> Tem site
+            </button>
+            <button class="presence-chip" data-filter="instagram" onclick="togglePresenceFilter(this, 'instagram')">
+              <i class="fa-brands fa-instagram"></i> Tem Instagram
+            </button>
+            <button class="presence-chip" data-filter="none" onclick="togglePresenceFilter(this, 'none')">
+              <i class="fa-solid fa-ban"></i> Sem site & IG
+            </button>
+
+            <div class="presence-count-hint" id="presence-count-hint"></div>
+          </div>
+        </div>
+
+        <!-- LEADS TABLE -->
+        <div class="table-container">
+          <table class="leads-table">
+            <thead>
+              <tr>
+                <th width="38"><input type="checkbox" id="check-all-leads" onchange="toggleSelectAll(this)"></th>
+                <th>EMPRESA & NOTA GOOGLE</th>
+                <th>CANAL MAIS VIÁVEL</th>
+                <th>PRESENÇA DIGITAL</th>
+                <th>CONTATO</th>
+                <th>STATUS</th>
+                <th>SCORE</th>
+                <th width="170">AÇÕES</th>
+              </tr>
+            </thead>
+            <tbody id="leads-table-body">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL 1: UPLOAD DE DADOS DO GOOGLE MAPS (CSV / JSON) -->
+  <div class="modal-backdrop hidden" id="upload-modal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header flex-between">
+        <div class="modal-title-wrap">
+          <i class="fa-solid fa-cloud-arrow-up text-primary"></i>
+          <div>
+            <h3>Upload de Dados do Google Maps</h3>
+            <p>Importe arquivos gerados por Apify, Outscraper, Instant Data Scraper ou planilhas CSV/JSON.</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" onclick="closeUploadModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- TABS DE UPLOAD: ARQUIVO, TEXTO OU GOOGLE SHEETS -->
+        <div class="upload-mode-tabs">
+          <button class="upload-tab active" id="tab-file-mode" onclick="switchUploadMode('file')">
+            <i class="fa-solid fa-file-csv"></i> Arquivo (.CSV ou .JSON)
+          </button>
+          <button class="upload-tab" id="tab-sheets-mode" onclick="switchUploadMode('sheets')">
+            <i class="fa-solid fa-table"></i> Google Planilhas (URL)
+          </button>
+          <button class="upload-tab" id="tab-text-mode" onclick="switchUploadMode('text')">
+            <i class="fa-solid fa-paste"></i> Colar Texto / CSV
+          </button>
+        </div>
+
+        <!-- FILE DRAG & DROP ZONE -->
+        <div id="file-drop-zone" class="drop-zone" onclick="document.getElementById('file-input-element').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+          <input type="file" id="file-input-element" accept=".csv, .json, .txt" style="display:none" onchange="handleFileSelected(event)">
+          <div class="drop-zone-content">
+            <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+            <h4>Arraste e solte seu arquivo aqui</h4>
+            <p>ou clique para escolher do seu computador (CSV, JSON)</p>
+            <div class="file-badges">
+              <span class="file-ext-badge">.CSV</span>
+              <span class="file-ext-badge">.JSON</span>
+              <span class="file-ext-badge">Instant Data Scraper</span>
+            </div>
+            <div id="selected-file-name" class="selected-file-name hidden"></div>
+          </div>
+        </div>
+
+        <!-- GOOGLE SHEETS URL ZONE -->
+        <div id="sheets-input-zone" class="sheets-zone hidden">
+          <div class="sheets-box">
+            <div class="sheets-icon-wrap">
+              <i class="fa-solid fa-file-excel text-green"></i>
+            </div>
+            <div class="sheets-desc">
+              <h4>Conectar Diretamente com Google Planilhas</h4>
+              <p>Cole o link de visualização da sua planilha do Google. O Kaptar baixa os dados automaticamente e organiza todos os campos.</p>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:14px;">
+            <label><i class="fa-solid fa-link"></i> Link da Planilha do Google:</label>
+            <input type="text" id="sheets-url-input" class="styled-input" placeholder="https://docs.google.com/spreadsheets/d/1wP.../edit#gid=0">
+          </div>
+          <div class="sheets-tip">
+            <i class="fa-solid fa-circle-info"></i>
+            <span>Importante: No Google Planilhas, clique em <strong>Compartilhar</strong> e selecione <strong>"Qualquer pessoa com o link pode ler"</strong> para liberar o acesso.</span>
+          </div>
+          <button class="btn-primary-highlight" style="margin-top:12px; width:100%; justify-content:center;" onclick="importFromGoogleSheets()">
+            <i class="fa-solid fa-cloud-arrow-down"></i> Baixar & Sincronizar Google Planilha
+          </button>
+        </div>
+
+        <!-- RAW TEXTAREA ZONE -->
+        <div id="text-input-zone" class="text-zone hidden">
+          <textarea id="raw-upload-textarea" rows="8" placeholder="Cole aqui o conteúdo bruto do seu CSV ou JSON exportado do Google Maps..."></textarea>
+          <button class="btn-secondary" style="margin-top:8px" onclick="previewRawText()"><i class="fa-solid fa-eye"></i> Analisar Dados Colados</button>
+        </div>
+
+        <!-- CONFIGURAÇÕES DE IMPORTAÇÃO -->
+        <div class="upload-options-grid">
+          <div class="form-group">
+            <label><i class="fa-solid fa-tag"></i> Nicho / Categoria Padrão:</label>
+            <input type="text" id="upload-default-nicho" class="styled-input" value="Clínicas de Odontologia" placeholder="Ex: Dentista, Restaurante, Barbearia">
+          </div>
+          <div class="form-group">
+            <label><i class="fa-solid fa-filter"></i> Tratamento de Duplicados:</label>
+            <select id="upload-dedup-select" class="styled-select">
+              <option value="skip" selected>Pular duplicados existentes (Recomendado)</option>
+              <option value="update">Atualizar dados dos leads existentes</option>
+              <option value="append">Importar todos (permitir duplicados)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- PREVIEW DOS DADOS PARSADOS -->
+        <div id="upload-preview-container" class="upload-preview-container hidden">
+          <div class="preview-header flex-between">
+            <span id="preview-count-label"><strong>0</strong> leads identificados</span>
+            <span class="badge-success"><i class="fa-solid fa-check"></i> Formato Reconhecido</span>
+          </div>
+          <div class="preview-table-wrap">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>Empresa</th>
+                  <th>Telefone</th>
+                  <th>Nota</th>
+                  <th>Site</th>
+                  <th>Endereço</th>
+                </tr>
+              </thead>
+              <tbody id="preview-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer flex-between">
+        <button class="btn-secondary" onclick="closeUploadModal()">Cancelar</button>
+        <button class="btn-primary-highlight" id="btn-confirm-upload" onclick="processUploadExecution()" disabled>
+          <i class="fa-solid fa-cloud-arrow-up"></i> Confirmar & Importar Leads
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: EDIÇÃO / CADASTRO DE LEAD -->
+  <div class="modal-backdrop hidden" id="edit-lead-modal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header flex-between">
+        <div class="modal-title-wrap">
+          <i class="fa-solid fa-pen-to-square text-primary"></i>
+          <div>
+            <h3 id="edit-lead-title">Gerenciar Lead</h3>
+            <p id="edit-lead-subtitle">Edite informações completas e histórico</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="edit-lead-id">
+        <div class="edit-form-grid">
+          <div class="form-group">
+            <label>Nome da Empresa / Clínica:</label>
+            <input type="text" id="edit-lead-name" class="styled-input" placeholder="Nome">
+          </div>
+          <div class="form-group">
+            <label>Nicho / Categoria:</label>
+            <input type="text" id="edit-lead-niche" class="styled-input" placeholder="Ex: Dentista">
+          </div>
+          <div class="form-group">
+            <label>Telefone / WhatsApp:</label>
+            <input type="text" id="edit-lead-phone" class="styled-input" placeholder="(11) 90000-0000">
+          </div>
+          <div class="form-group">
+            <label>Status da Prospecção:</label>
+            <select id="edit-lead-status" class="styled-select">
+              <option value="Novo">Novo</option>
+              <option value="Em Contato">Em Contato</option>
+              <option value="Qualificado">Qualificado</option>
+              <option value="Fechado">Fechado</option>
+              <option value="Arquivado">Arquivado</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Nota Google (1 a 5):</label>
+            <input type="number" id="edit-lead-rating" class="styled-input" step="0.1" min="1" max="5" placeholder="4.9">
+          </div>
+          <div class="form-group">
+            <label>Qtd. de Avaliações:</label>
+            <input type="number" id="edit-lead-reviews" class="styled-input" placeholder="100">
+          </div>
+          <div class="form-group">
+            <label>Website:</label>
+            <input type="text" id="edit-lead-website" class="styled-input" placeholder="https://...">
+          </div>
+          <div class="form-group">
+            <label>Instagram:</label>
+            <input type="text" id="edit-lead-instagram" class="styled-input" placeholder="@perfil">
+          </div>
+          <div class="form-group full-width">
+            <label>Endereço Completo:</label>
+            <input type="text" id="edit-lead-address" class="styled-input" placeholder="Rua, número, complemento">
+          </div>
+          <div class="form-group full-width">
+            <label>Cidade / Bairro:</label>
+            <input type="text" id="edit-lead-city" class="styled-input" placeholder="Bela Vista, São Paulo - SP">
+          </div>
+          <div class="form-group full-width">
+            <label>Histórico do Follow-up & Anotações (ligações, conversas, propostas):</label>
+            <textarea id="edit-lead-notes" rows="4" class="styled-textarea" placeholder="Ex: Conversado via WhatsApp dia 02/10. Doutor demonstrou interesse em tráfego pago para implantes..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer flex-between">
+        <button class="btn-bulk-delete" id="btn-delete-from-modal" onclick="deleteCurrentEditLead()"><i class="fa-solid fa-trash-can"></i> Excluir</button>
+        <div class="modal-footer-right">
+          <button class="btn-secondary" onclick="closeEditModal()">Cancelar</button>
+          <button class="btn-primary-highlight" onclick="saveLeadEdit()"><i class="fa-solid fa-floppy-disk"></i> Salvar Lead</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: WHATSAPP PROSPECÇÃO FRIA (3 OPÇÕES PERSONALIZADAS) -->
+  <div class="modal-backdrop hidden" id="whatsapp-modal">
+    <div class="modal-card">
+      <div class="modal-header flex-between">
+        <div class="modal-title-wrap">
+          <i class="fa-brands fa-whatsapp text-whatsapp-icon"></i>
+          <div>
+            <h3>Prospecção Fria no WhatsApp</h3>
+            <p id="whatsapp-lead-subtitle">Carregando dados da clínica...</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" onclick="closeWhatsAppModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- LEAD REPUTATION BADGE -->
+        <div class="lead-rep-banner flex-between" id="modal-lead-rep-banner">
+          <div class="rep-info">
+            <span class="rep-name" id="modal-rep-name">Nome da Clínica</span>
+            <span class="rep-score" id="modal-rep-score">⭐ 4.9 no Google</span>
+          </div>
+          <div class="rep-phone" id="modal-rep-phone">(11) 90000-0000</div>
+        </div>
+
+        <div class="templates-instruction">
+          <strong>Escolha um dos 3 scripts de alta conversão:</strong>
+          <span>Personalizados automaticamente com o nome da clínica e a nota do Google para gerar rapport imediato.</span>
+        </div>
+
+        <!-- 3 SCRIPT TABS -->
+        <div class="script-tabs">
+          <button class="script-tab active" onclick="selectScriptTab(0)">
+            <span class="tab-num">1</span> Tráfego Pago & Rapport
+          </button>
+          <button class="script-tab" onclick="selectScriptTab(1)">
+            <span class="tab-num">2</span> Criação de Site / Conversão
+          </button>
+          <button class="script-tab" onclick="selectScriptTab(2)">
+            <span class="tab-num">3</span> Ultra Curta (Rápida Resposta)
+          </button>
+        </div>
+
+        <!-- MESSAGE EDITOR -->
+        <div class="message-editor-card">
+          <div class="editor-header flex-between">
+            <span id="script-objective-label">Objetivo do script</span>
+            <span class="copy-hint"><i class="fa-regular fa-clock"></i> Tempo de leitura: ~15s</span>
+          </div>
+          <textarea id="whatsapp-message-text" rows="6"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer flex-between">
+        <button class="btn-copy-msg" onclick="copyWhatsAppMessage()">
+          <i class="fa-regular fa-copy"></i> Copiar Mensagem
+        </button>
+        <div class="modal-footer-right">
+          <button class="btn-mark-contacted" onclick="markAsContacted()">
+            <i class="fa-solid fa-check"></i> Marcar "Em Contato"
+          </button>
+          <button class="btn-open-wa" onclick="openDirectWhatsApp()">
+            <i class="fa-brands fa-whatsapp"></i> Enviar no WhatsApp
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: CONFIGURAÇÕES & SUPABASE -->
+  <div class="modal-backdrop hidden" id="settings-modal">
+    <div class="modal-card">
+      <div class="modal-header flex-between">
+        <div class="modal-title-wrap">
+          <i class="fa-solid fa-gear text-primary"></i>
+          <div>
+            <h3>Configurações & Conexões</h3>
+            <p>Gerenciamento da base local e conexão em nuvem com Supabase</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" onclick="closeSettingsModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- LOCAL DATABASE STATUS -->
+        <div class="settings-card-box">
+          <div class="flex-between">
+            <div class="status-left">
+              <i class="fa-solid fa-hard-drive text-green" style="font-size:1.4rem"></i>
+              <div>
+                <strong>Banco de Dados Local (JSON)</strong>
+                <p><code>D:\sites-vibe-code\data-scrapter-google\data\leads.json</code></p>
+              </div>
+            </div>
+            <span class="badge-success"><i class="fa-solid fa-check"></i> Ativo & Seguro</span>
+          </div>
+        </div>
+
+        <!-- SUPABASE INTEGRATION -->
+        <div class="supabase-config-section">
+          <div class="section-title-row">
+            <div class="flex-align-center" style="gap:8px;">
+              <svg width="20" height="20" viewBox="0 0 109 113" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M63.7076 110.284C60.848 113.885 55.0502 111.912 54.9709 107.314L53.7946 39.0478H97.4705C104.939 39.0478 109.117 47.6599 104.475 53.5073L63.7076 110.284Z" fill="#3ECF8E"/>
+                <path d="M45.2924 2.71637C48.152 -0.884577 53.9498 1.08781 54.0291 5.68606L55.2054 73.9522H11.5295C4.06094 73.9522 -0.116668 65.3401 4.52497 59.4927L45.2924 2.71637Z" fill="#3ECF8E" fill-opacity="0.7"/>
+              </svg>
+              <strong>Integração Nuvem (Supabase)</strong>
+            </div>
+            <span class="supabase-status-pill" id="supabase-status-badge">Verificando...</span>
+          </div>
+          <p class="supabase-desc">Conecte o Kaptar à sua tabela no Supabase para sincronizar leads na nuvem em tempo real.</p>
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>Supabase Project URL:</label>
+            <input type="text" id="supabase-url-input" class="styled-input" placeholder="https://xxxxxxxxxxxx.supabase.co">
+          </div>
+
+          <div class="form-group" style="margin-top:10px;">
+            <label>Supabase Anon / Public Key:</label>
+            <input type="password" id="supabase-key-input" class="styled-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+          </div>
+
+          <div class="supabase-buttons-row">
+            <button class="btn-secondary" onclick="saveSupabaseConfig()">
+              <i class="fa-solid fa-floppy-disk"></i> Salvar Conexão
+            </button>
+            <button class="btn-primary-highlight" id="btn-sync-supabase" onclick="syncLeadsToSupabase()">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar Leads para Supabase
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer flex-between">
+        <button class="btn-secondary" onclick="closeSettingsModal()">Fechar</button>
+        <span class="author-credits-sm">Kaptar v5.3 • Raphael Lima</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="toast-notification hidden">
+    <i class="fa-solid fa-circle-check toast-icon"></i>
+    <span id="toast-text">Notificação</span>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="app.js"></script>
+</body>
+</html>
