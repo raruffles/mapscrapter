@@ -4,7 +4,7 @@ let crmActiveTab = 'ativos'; // 'ativos', 'qualificados', 'em_contato', 'fechado
 let smartActiveTab = 'all'; // 'all', 'high_rating', 'with_site', 'no_site', 'with_instagram', 'viavel_whatsapp', 'viavel_instagram'
 let allLeads = [];
 let filteredLeads = [];
-let selectedNiches = ['Clínicas de Odontologia'];
+let selectedNiches = ['Academia'];
 let activeFilters = { phone: false, site: false, instagram: false };
 let presenceFilter = null; // 'phone', 'site', 'instagram', 'none'
 let currentSort = 'score-desc';
@@ -760,6 +760,22 @@ async function deduplicateDatabase() {
   }
 }
 
+// CLEAR ALL LEADS (Zerar base para nova planilha limpa)
+async function clearAllLeads() {
+  if (!confirm('Deseja realmente limpar todos os leads da base para importar uma nova planilha limpa?')) return;
+  try {
+    showToast('🗑️ Limpando base de leads...');
+    const res = await fetch('/api/leads/clear-all', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Base limpa com sucesso! Pronto para carregar nova planilha.');
+      loadLeads();
+    }
+  } catch (err) {
+    showToast('Erro ao limpar base: ' + err.message);
+  }
+}
+
 // UPLOAD MODAL & DRAG AND DROP
 function openUploadModal() {
   document.getElementById('upload-modal').classList.remove('hidden');
@@ -896,7 +912,28 @@ function parseAndPreviewUpload(content, type) {
         `;
         pBody.appendChild(tr);
       });
-      showToast(`Arquivo analisado: ${totalCount} registros prontos para importação!`);
+      // Auto-detect niche from sample rows
+      let detectedNiche = '';
+      for (const row of sampleRows) {
+        const val = row.W4Efsd || row.categoryName || row.category || row.categories || row.nicho || row.tipo || row.type || row.Categoria;
+        if (val && typeof val === 'string' && val.trim().length > 1 && !val.includes('http') && val !== '·' && val !== '') {
+          detectedNiche = val.trim();
+          break;
+        }
+      }
+      if (!detectedNiche && sampleRows.length > 0) {
+        const sampleNames = sampleRows.map(r => Object.values(r)[0] || '').join(' ').toLowerCase();
+        if (sampleNames.includes('academia') || sampleNames.includes('fit') || sampleNames.includes('crossfit')) detectedNiche = 'Academia';
+        else if (sampleNames.includes('barbearia') || sampleNames.includes('barber')) detectedNiche = 'Barbearia';
+        else if (sampleNames.includes('restaurante') || sampleNames.includes('pizzaria')) detectedNiche = 'Restaurante';
+      }
+
+      if (detectedNiche) {
+        const nicheInput = document.getElementById('upload-default-nicho');
+        if (nicheInput) nicheInput.value = detectedNiche;
+      }
+
+      showToast(`Arquivo analisado: ${totalCount} registros prontos para importação! ${detectedNiche ? 'Nicho detectado: ' + detectedNiche : ''}`);
     } else {
       showToast('Nenhum registro legível encontrado.');
     }
@@ -915,7 +952,7 @@ async function processUploadExecution() {
   btn.disabled = true;
   btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processando & Normalizando...`;
 
-  const defaultNiche = document.getElementById('upload-default-nicho').value.trim() || 'Clínicas de Odontologia';
+  const defaultNiche = document.getElementById('upload-default-nicho').value.trim() || '';
   const deduplicateOption = document.getElementById('upload-dedup-select').value;
 
   try {
@@ -954,7 +991,7 @@ function openNewLeadModal() {
   document.getElementById('edit-lead-subtitle').innerText = 'Insira os dados da empresa para prospecção';
   document.getElementById('edit-lead-id').value = '';
   document.getElementById('edit-lead-name').value = '';
-  document.getElementById('edit-lead-niche').value = 'Clínicas de Odontologia';
+  document.getElementById('edit-lead-niche').value = 'Academia';
   document.getElementById('edit-lead-phone').value = '';
   document.getElementById('edit-lead-status').value = 'Novo';
   document.getElementById('edit-lead-rating').value = '5.0';
@@ -962,7 +999,7 @@ function openNewLeadModal() {
   document.getElementById('edit-lead-website').value = '';
   document.getElementById('edit-lead-instagram').value = '';
   document.getElementById('edit-lead-address').value = '';
-  document.getElementById('edit-lead-city').value = 'Bela Vista, São Paulo - SP';
+  document.getElementById('edit-lead-city').value = 'Taubaté - SP';
   document.getElementById('edit-lead-notes').value = '';
   document.getElementById('btn-delete-from-modal').classList.add('hidden');
 
@@ -978,7 +1015,7 @@ function openEditLeadModal(id) {
   document.getElementById('edit-lead-subtitle').innerText = `Gerenciando dados de: ${lead.name}`;
   document.getElementById('edit-lead-id').value = lead.id;
   document.getElementById('edit-lead-name').value = lead.name || '';
-  document.getElementById('edit-lead-niche').value = lead.niche || 'Dentista';
+  document.getElementById('edit-lead-niche').value = lead.niche || 'Geral';
   document.getElementById('edit-lead-phone').value = lead.phone || '';
   document.getElementById('edit-lead-status').value = lead.status || 'Novo';
   document.getElementById('edit-lead-rating').value = lead.rating || 5.0;
@@ -986,7 +1023,7 @@ function openEditLeadModal(id) {
   document.getElementById('edit-lead-website').value = lead.website || '';
   document.getElementById('edit-lead-instagram').value = lead.instagram || '';
   document.getElementById('edit-lead-address').value = lead.address || '';
-  document.getElementById('edit-lead-city').value = lead.city || 'Bela Vista, SP';
+  document.getElementById('edit-lead-city').value = lead.city || 'Taubaté - SP';
   document.getElementById('edit-lead-notes').value = lead.notes || '';
   document.getElementById('btn-delete-from-modal').classList.remove('hidden');
 
@@ -1064,7 +1101,7 @@ async function openWhatsAppModal(id) {
   const modal = document.getElementById('whatsapp-modal');
   modal.classList.remove('hidden');
 
-  document.getElementById('whatsapp-lead-subtitle').innerText = `${currentLeadForWhatsApp.niche || 'Dentista'} • ${currentLeadForWhatsApp.city || 'Bela Vista, SP'}`;
+  document.getElementById('whatsapp-lead-subtitle').innerText = `${currentLeadForWhatsApp.niche || 'Empresa'} • ${currentLeadForWhatsApp.city || 'Taubaté - SP'}`;
   document.getElementById('modal-rep-name').innerText = currentLeadForWhatsApp.name;
   document.getElementById('modal-rep-score').innerText = `⭐ ${currentLeadForWhatsApp.rating ? currentLeadForWhatsApp.rating.toFixed(1) : '4.9'} no Google (${currentLeadForWhatsApp.reviewCount || 100}+ avaliações)`;
   document.getElementById('modal-rep-phone').innerText = currentLeadForWhatsApp.phone || 'Sem telefone';

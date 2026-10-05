@@ -112,7 +112,7 @@
             <!-- REGION SEARCH INPUT -->
             <div class="location-search-bar">
               <i class="fa-solid fa-magnifying-glass search-icon"></i>
-              <input type="text" id="region-input" placeholder="Digite uma cidade ou bairro (ex: Bela Vista, São Paulo - SP)" value="Bela Vista, São Paulo - SP">
+              <input type="text" id="region-input" placeholder="Digite uma cidade ou bairro (ex: Taubaté - SP)" value="Taubaté - SP">
               <button class="btn-locate" onclick="searchRegionOnMap()"><i class="fa-solid fa-crosshairs"></i> Localizar</button>
             </div>
 
@@ -146,8 +146,8 @@
 
             <!-- SELECTED NICHES TAGS -->
             <div class="selected-tags-container" id="selected-tags">
-              <span class="tag-pill selected" data-niche="Clínicas de Odontologia">
-                Clínicas de Odontologia <i class="fa-solid fa-xmark remove-tag" onclick="removeNiche('Clínicas de Odontologia')"></i>
+              <span class="tag-pill selected" data-niche="Academia">
+                Academia <i class="fa-solid fa-xmark remove-tag" onclick="removeNiche('Academia')"></i>
               </span>
             </div>
 
@@ -161,15 +161,25 @@
             <!-- PRESET CATEGORIES ACCORDION / GROUPS -->
             <div class="categories-presets-list">
               <div class="preset-group">
+                <div class="group-title"><i class="fa-solid fa-dumbbell"></i> FITNESS & ESPORTES</div>
+                <div class="pills-grid">
+                  <button class="pill-chip active" onclick="toggleNicheChip(this, 'Academia')">Academia</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Crossfit')">Crossfit</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Personal Trainer')">Personal Trainer</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Estúdio de Pilates')">Estúdio de Pilates</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Artes Marciais')">Artes Marciais</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Natação')">Natação</button>
+                </div>
+              </div>
+
+              <div class="preset-group">
                 <div class="group-title"><i class="fa-solid fa-tooth"></i> SAÚDE & BEM-ESTAR</div>
                 <div class="pills-grid">
-                  <button class="pill-chip active" onclick="toggleNicheChip(this, 'Clínicas de Odontologia')">Clínicas de Odontologia</button>
+                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Clínicas de Odontologia')">Clínicas de Odontologia</button>
                   <button class="pill-chip" onclick="toggleNicheChip(this, 'Dentista')">Dentista</button>
-                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Harmonização Orofacial')">Harmonização Orofacial</button>
                   <button class="pill-chip" onclick="toggleNicheChip(this, 'Clínica Médica')">Clínica Médica</button>
                   <button class="pill-chip" onclick="toggleNicheChip(this, 'Fisioterapia')">Fisioterapia</button>
                   <button class="pill-chip" onclick="toggleNicheChip(this, 'Estética & Beleza')">Estética & Beleza</button>
-                  <button class="pill-chip" onclick="toggleNicheChip(this, 'Psicologia')">Psicologia</button>
                 </div>
               </div>
 
@@ -297,6 +307,9 @@
             </button>
             <button class="btn-secondary" onclick="deduplicateDatabase()" title="Localizar e fundir cadastros repetidos">
               <i class="fa-solid fa-broom"></i> Limpar Duplicados
+            </button>
+            <button class="btn-secondary" onclick="clearAllLeads()" title="Zerar base de dados para importar nova planilha limpa">
+              <i class="fa-solid fa-trash-can"></i> Limpar Base
             </button>
             <div class="dropdown-wrapper">
               <button class="btn-secondary" onclick="toggleExportMenu()">
@@ -525,13 +538,14 @@
         <!-- CONFIGURAÇÕES DE IMPORTAÇÃO -->
         <div class="upload-options-grid">
           <div class="form-group">
-            <label><i class="fa-solid fa-tag"></i> Nicho / Categoria Padrão:</label>
-            <input type="text" id="upload-default-nicho" class="styled-input" value="Clínicas de Odontologia" placeholder="Ex: Dentista, Restaurante, Barbearia">
+            <label><i class="fa-solid fa-tag"></i> Nicho / Ramo de Atuação:</label>
+            <input type="text" id="upload-default-nicho" class="styled-input" value="" placeholder="Auto-detectar da planilha (ou digite: Academia, Restaurante, etc.)">
           </div>
           <div class="form-group">
-            <label><i class="fa-solid fa-filter"></i> Tratamento de Duplicados:</label>
+            <label><i class="fa-solid fa-filter"></i> Modo de Importação:</label>
             <select id="upload-dedup-select" class="styled-select">
-              <option value="skip" selected>Pular duplicados existentes (Recomendado)</option>
+              <option value="replace">Substituir base atual (Carregar apenas esta nova planilha)</option>
+              <option value="skip" selected>Adicionar à base atual (Pular duplicados)</option>
               <option value="update">Atualizar dados dos leads existentes</option>
               <option value="append">Importar todos (permitir duplicados)</option>
             </select>
@@ -588,12 +602,12 @@
         <input type="hidden" id="edit-lead-id">
         <div class="edit-form-grid">
           <div class="form-group">
-            <label>Nome da Empresa / Clínica:</label>
+            <label>Nome da Empresa / Estabelecimento:</label>
             <input type="text" id="edit-lead-name" class="styled-input" placeholder="Nome">
           </div>
           <div class="form-group">
-            <label>Nicho / Categoria:</label>
-            <input type="text" id="edit-lead-niche" class="styled-input" placeholder="Ex: Dentista">
+            <label>Nicho / Ramo de Atuação:</label>
+            <input type="text" id="edit-lead-niche" class="styled-input" placeholder="Ex: Academia, Restaurante, Dentista">
           </div>
           <div class="form-group">
             <label>Telefone / WhatsApp:</label>
@@ -658,7 +672,7 @@
           <i class="fa-brands fa-whatsapp text-whatsapp-icon"></i>
           <div>
             <h3>Prospecção Fria no WhatsApp</h3>
-            <p id="whatsapp-lead-subtitle">Carregando dados da clínica...</p>
+            <p id="whatsapp-lead-subtitle">Carregando dados do estabelecimento...</p>
           </div>
         </div>
         <button class="btn-close-modal" onclick="closeWhatsAppModal()"><i class="fa-solid fa-xmark"></i></button>
@@ -668,7 +682,7 @@
         <!-- LEAD REPUTATION BADGE -->
         <div class="lead-rep-banner flex-between" id="modal-lead-rep-banner">
           <div class="rep-info">
-            <span class="rep-name" id="modal-rep-name">Nome da Clínica</span>
+            <span class="rep-name" id="modal-rep-name">Nome da Empresa</span>
             <span class="rep-score" id="modal-rep-score">⭐ 4.9 no Google</span>
           </div>
           <div class="rep-phone" id="modal-rep-phone">(11) 90000-0000</div>
@@ -676,7 +690,7 @@
 
         <div class="templates-instruction">
           <strong>Escolha um dos 3 scripts de alta conversão:</strong>
-          <span>Personalizados automaticamente com o nome da clínica e a nota do Google para gerar rapport imediato.</span>
+          <span>Personalizados automaticamente com o nome da empresa e a nota do Google para gerar rapport imediato.</span>
         </div>
 
         <!-- 3 SCRIPT TABS -->

@@ -251,7 +251,31 @@ function mapGoogleScraperRecord(item, customNiche = 'Geral') {
   const reviewsVal = findValue(['reviewsCount', 'reviews_count', 'reviewCount', 'reviews', 'avaliacoes', 'Avaliações', 'num_reviews', 'user_ratings_total', 'UY7F9']);
 
   // Category / Niche mapping (includes Instant Data Scraper class W4Efsd)
-  const nicheVal = findValue(['categoryName', 'category', 'categories', 'nicho', 'tipo', 'type', 'sub_type', 'Categoria', 'Nicho', 'W4Efsd']) || customNiche;
+  let nicheVal = findValue(['categoryName', 'category', 'categories', 'nicho', 'tipo', 'type', 'sub_type', 'Categoria', 'Nicho', 'W4Efsd']);
+
+  // Auto-detect niche from business name if not found or if generic
+  if (!nicheVal || nicheVal === 'Geral' || nicheVal === 'Comércio / Serviços' || nicheVal === 'Google Planilha' || nicheVal === 'Google Maps Scraper') {
+    const lowerName = (name || '').toLowerCase();
+    if (lowerName.includes('academia') || lowerName.includes('fit') || lowerName.includes('crossfit') || lowerName.includes('treino') || lowerName.includes('gym')) {
+      nicheVal = 'Academia';
+    } else if (lowerName.includes('odonto') || lowerName.includes('dentist')) {
+      nicheVal = 'Odontologia';
+    } else if (lowerName.includes('barbearia') || lowerName.includes('barber')) {
+      nicheVal = 'Barbearia';
+    } else if (lowerName.includes('restaurante') || lowerName.includes('pizzaria') || lowerName.includes('hamburgueria') || lowerName.includes('bar ')) {
+      nicheVal = 'Restaurante';
+    } else if (lowerName.includes('clinica') || lowerName.includes('médic')) {
+      nicheVal = 'Clínica Médica';
+    } else if (lowerName.includes('pet') || lowerName.includes('veterin')) {
+      nicheVal = 'Pet Shop / Veterinária';
+    } else if (lowerName.includes('imobil') || lowerName.includes('corretor')) {
+      nicheVal = 'Imobiliária';
+    } else if (customNiche && customNiche !== 'Clínicas de Odontologia' && customNiche !== 'Google Planilha') {
+      nicheVal = customNiche;
+    } else {
+      nicheVal = 'Comércio Local';
+    }
+  }
 
   // Address mapping (includes Instant Data Scraper classes W4Efsd 4, W4Efsd 3)
   const addressVal = findValue(['address', 'full_address', 'street', 'formatted_address', 'endereco', 'Endereço', 'localizacao', 'cidade', 'city', 'W4Efsd 4', 'W4Efsd 3', 'W4Efsd 2']);
@@ -569,6 +593,25 @@ app.post('/api/leads/upload', (req, res) => {
       return res.status(400).json({ error: 'Nenhum registro encontrado no arquivo enviado' });
     }
 
+    // Se a opção for substituir, limpa a base e insere apenas os leads da nova planilha
+    if (deduplicateOption === 'replace') {
+      const replacedLeads = [];
+      parsedRows.forEach(rawItem => {
+        const mappedLead = mapGoogleScraperRecord(rawItem, defaultNiche);
+        if (!mappedLead.name || mappedLead.name === 'Empresa Sem Nome') return;
+        replacedLeads.push(mappedLead);
+      });
+      saveLeads(replacedLeads, true);
+      return res.json({
+        success: true,
+        totalParsed: parsedRows.length,
+        importedCount: replacedLeads.length,
+        updatedCount: 0,
+        skippedCount: 0,
+        totalLeads: replacedLeads.length
+      });
+    }
+
     const currentLeads = getLeads();
     const nameMap = new Map();
     const phoneMap = new Map();
@@ -675,6 +718,24 @@ app.post('/api/leads/google-sheets', async (req, res) => {
 
     if (parsedRows.length === 0) {
       return res.status(400).json({ error: 'Planilha sem dados ou vazia' });
+    }
+
+    if (deduplicateOption === 'replace') {
+      const replacedLeads = [];
+      parsedRows.forEach(row => {
+        const mappedLead = mapGoogleScraperRecord(row, defaultNiche);
+        if (!mappedLead.name || mappedLead.name === 'Empresa Sem Nome') return;
+        replacedLeads.push(mappedLead);
+      });
+      saveLeads(replacedLeads, true);
+      return res.json({
+        success: true,
+        totalParsed: parsedRows.length,
+        importedCount: replacedLeads.length,
+        updatedCount: 0,
+        skippedCount: 0,
+        totalLeads: replacedLeads.length
+      });
     }
 
     const currentLeads = getLeads();
@@ -961,6 +1022,12 @@ app.post('/api/leads/bulk-delete', (req, res) => {
 
   saveLeads(remaining, true);
   res.json({ success: true, deletedCount, totalRemaining: remaining.length });
+});
+
+// API: Clear All Leads
+app.post('/api/leads/clear-all', (req, res) => {
+  saveLeads([], true);
+  res.json({ success: true, count: 0 });
 });
 
 // API: Deduplicate Database
