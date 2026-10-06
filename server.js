@@ -5,7 +5,8 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3333;
-const DATA_DIR = path.join(__dirname, 'data');
+const isServerless = !!(process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT);
+const DATA_DIR = isServerless ? '/tmp/data' : path.join(__dirname, 'data');
 const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
 const DATA_FILE = path.join(DATA_DIR, 'leads.json');
 const SUPABASE_CONFIG_FILE = path.join(DATA_DIR, 'supabase_config.json');
@@ -13,8 +14,45 @@ const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 const ACTIVE_SESSION_FILE = path.join(DATA_DIR, 'active_session.json');
 
 // Ensure directories exist
-fs.mkdirSync(DATA_DIR, { recursive: true });
-fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+try {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+} catch (e) {}
+
+// Seed /tmp files from bundled data if running in serverless environment
+if (isServerless) {
+  const bundledDataDir = path.join(__dirname, 'data');
+  const filesToSeed = ['leads.json', 'sessions.json', 'active_session.json'];
+  filesToSeed.forEach(file => {
+    const src = path.join(bundledDataDir, file);
+    const dest = path.join(DATA_DIR, file);
+    if (!fs.existsSync(dest) && fs.existsSync(src)) {
+      try {
+        fs.copyFileSync(src, dest);
+      } catch (err) {
+        console.error(`Erro ao semear ${file} em /tmp:`, err);
+      }
+    }
+  });
+}
+
+// Helper: Supabase Config (env vars prioritize over local file)
+function getSupabaseConfig() {
+  const envUrl = process.env.SUPABASE_URL;
+  const envKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
+  if (envUrl && envKey) {
+    return { url: envUrl.trim(), key: envKey.trim(), source: 'env' };
+  }
+  try {
+    if (fs.existsSync(SUPABASE_CONFIG_FILE)) {
+      const config = JSON.parse(fs.readFileSync(SUPABASE_CONFIG_FILE, 'utf-8'));
+      if (config.url && config.key) {
+        return { url: config.url.trim(), key: config.key.trim(), source: 'file' };
+      }
+    }
+  } catch (e) {}
+  return null;
+}
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -1039,8 +1077,31 @@ app.post('/api/leads/quick-scan', async (req, res) => {
 });
 
 // API: Get all leads
-app.get('/api/leads', (req, res) => {
-  const leads = getLeads();
+app.get('/api/leads', async (req, res) => {
+  let leads = getLeads();
+  if ((!leads || leads.length === 0) && isServerless) {
+    const sb = getSupabaseConfig();
+    if (sb) {
+      try {
+        const endpoint = `${sb.url.replace(/\/$/, '')}/rest/v1/leads?select=*`;
+        const response = await fetch(endpoint, {
+          headers: {
+            'apikey': sb.key,
+            'Authorization': `Bearer ${sb.key}`
+          }
+        });
+        if (response.ok) {
+          const remoteLeads = await response.json();
+          if (Array.isArray(remoteLeads) && remoteLeads.length > 0) {
+            saveLeads(remoteLeads, false);
+            return res.json(remoteLeads);
+          }
+        }
+      } catch (e) {
+        console.error('Erro ao buscar do Supabase no fallback:', e);
+      }
+    }
+  }
   res.json(leads);
 });
 
@@ -1568,17 +1629,16 @@ app.get('/api/sessions/:id/export-json', (req, res) => {
 
 // Supabase Configuration & Sync
 app.get('/api/supabase/config', (req, res) => {
-  try {
-    if (fs.existsSync(SUPABASE_CONFIG_FILE)) {
-      const config = JSON.parse(fs.readFileSync(SUPABASE_CONFIG_FILE, 'utf-8'));
-      return res.json({
-        connected: !!(config.url && config.key),
-        url: config.url || '',
-        key: config.key ? '••••••••' + config.key.slice(-6) : ''
-      });
-    }
-  } catch (e) {}
-  res.json({ connected: false, url: '', key: '' });
+  const sb = getSupabaseConfig();
+  if (sb) {
+    return res.json({
+      connected: true,
+      url: sb.url,
+      key: '••••••••' + sb.key.slice(-6),
+      source: sb.source
+    });
+  }
+  res.json({ connected: false, url: '', key: '', source: 'none' });
 });
 
 app.post('/api/supabase/config', (req, res) => {
@@ -1593,22 +1653,19 @@ app.post('/api/supabase/config', (req, res) => {
 
 app.post('/api/supabase/sync', async (req, res) => {
   try {
-    if (!fs.existsSync(SUPABASE_CONFIG_FILE)) {
-      return res.status(400).json({ error: 'Supabase não configurado. Adicione a URL e a Anon Key.' });
-    }
-    const config = JSON.parse(fs.readFileSync(SUPABASE_CONFIG_FILE, 'utf-8'));
-    if (!config.url || !config.key) {
-      return res.status(400).json({ error: 'URL ou Anon Key do Supabase ausentes.' });
+    const sb = getSupabaseConfig();
+    if (!sb) {
+      return res.status(400).json({ error: 'Supabase não configurado. Adicione a URL e a Anon Key no painel ou via variáveis de ambiente (SUPABASE_URL e SUPABASE_ANON_KEY).' });
     }
 
     const leads = getLeads();
-    const endpoint = `${config.url.replace(/\/$/, '')}/rest/v1/leads`;
+    const endpoint = `${sb.url.replace(/\/$/, '')}/rest/v1/leads`;
 
     const response = await fetch(`${endpoint}?on_conflict=id`, {
       method: 'POST',
       headers: {
-        'apikey': config.key,
-        'Authorization': `Bearer ${config.key}`,
+        'apikey': sb.key,
+        'Authorization': `Bearer ${sb.key}`,
         'Content-Type': 'application/json',
         'Prefer': 'resolution=merge-duplicates'
       },
@@ -1626,8 +1683,48 @@ app.post('/api/supabase/sync', async (req, res) => {
   }
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`🚀 MapScraper Server rodando em http://localhost:${PORT}`);
-  console.log(`📁 Armazenamento: ${DATA_FILE}`);
+// Supabase: Pull leads from cloud to local
+app.post('/api/supabase/pull', async (req, res) => {
+  try {
+    const sb = getSupabaseConfig();
+    if (!sb) {
+      return res.status(400).json({ error: 'Supabase não configurado.' });
+    }
+
+    const endpoint = `${sb.url.replace(/\/$/, '')}/rest/v1/leads?select=*`;
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: {
+        'apikey': sb.key,
+        'Authorization': `Bearer ${sb.key}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const errTxt = await response.text();
+      return res.status(response.status).json({ error: `Erro na API Supabase: ${errTxt}` });
+    }
+
+    const remoteLeads = await response.json();
+    if (Array.isArray(remoteLeads) && remoteLeads.length > 0) {
+      saveLeads(remoteLeads, true);
+      return res.json({ success: true, count: remoteLeads.length, leads: remoteLeads });
+    }
+
+    res.json({ success: true, count: 0, leads: [] });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao baixar leads do Supabase: ' + err.message });
+  }
 });
+
+// Export Express app for serverless (Netlify Functions) / tests
+module.exports = app;
+
+// Start Server locally if run directly
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 MapScraper Server rodando em http://localhost:${PORT}`);
+    console.log(`📁 Armazenamento: ${DATA_FILE}`);
+  });
+}

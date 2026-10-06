@@ -1385,6 +1385,33 @@ async function syncLeadsToSupabase() {
   }
 }
 
+async function pullLeadsFromSupabase() {
+  const btn = document.getElementById('btn-pull-supabase');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Baixando...`;
+  }
+
+  try {
+    showToast('☁️ Buscando leads do Supabase...');
+    const res = await fetch('/api/supabase/pull', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`🎉 Sucesso! ${data.count} leads carregados do Supabase.`);
+      await fetchLeads();
+    } else {
+      showToast('Falha ao baixar: ' + (data.error || 'Verifique as configurações'));
+    }
+  } catch (e) {
+    showToast('Erro ao baixar: ' + e.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> Baixar do Supabase`;
+    }
+  }
+}
+
 // ==========================================
 // SESSIONS & CAMPAIGNS (SALVAR / EXPORTAR SEÇÕES)
 // ==========================================

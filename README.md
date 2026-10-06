@@ -50,14 +50,23 @@ Sistema completo de extração, inteligência de contatos e CRM de prospecção 
 
 - ☁️ **Sincronização em Nuvem (Supabase)**:
   - Conexão REST nativa via Supabase API (`/rest/v1/leads`).
+  - Script SQL pronto para execução em 1 clique (`supabase_schema.sql`).
+  - Sincronização bidirecional: Envio para nuvem e download/restauração direta pelo painel.
   - Armazenamento local persistente em `data/leads.json` com fallback total offline.
+
+- 🌐 **Deploy Serverless na Netlify**:
+  - Arquitetura híbrida com Frontend estático em CDN global e Backend Express rodando via Netlify Functions (`netlify/functions/api.js`).
+  - Compatibilidade com variáveis de ambiente na nuvem (`SUPABASE_URL`, `SUPABASE_ANON_KEY`).
+
+- 🪨 **Limitador & Compressor de Tokens Caveman**:
+  - Compatível com o ecossistema Antigravity/Gemini com compressão de leitura (proxy) e regras de escrita concisa (skills).
 
 ---
 
-## 🛠️ Como Executar
+## 🛠️ Como Executar Localmente
 
 ### 1. Pré-requisitos
-- Node.js instalado (v16+)
+- Node.js instalado (v18+)
 
 ### 2. Instalação
 ```bash
@@ -75,6 +84,33 @@ Acesse no seu navegador: **http://localhost:3333**
 
 ---
 
+## ☁️ Configuração no Supabase
+
+1. Crie um projeto gratuito no [Supabase](https://supabase.com).
+2. Acesse o **SQL Editor** do projeto.
+3. Copie e cole o conteúdo do arquivo [`supabase_schema.sql`](./supabase_schema.sql) e clique em **Run**.
+4. No MapScrapter, clique no ícone de ⚙️ **Configurações** no topo direito:
+   - Cole a sua **Project URL** (ex: `https://xyzproject.supabase.co`)
+   - Cole a sua **Anon / Public Key**
+   - Clique em **Salvar Conexão** e depois em **Sincronizar Leads para Supabase**.
+
+---
+
+## 🚀 Como Fazer Deploy na Netlify
+
+1. Faça login na [Netlify](https://app.netlify.com).
+2. Clique em **Add new site** > **Import an existing project** > **GitHub**.
+3. Selecione o repositório `raruffles/mapscrapter`.
+4. As configurações já estão pré-configuradas pelo arquivo `netlify.toml`:
+   - **Publish directory**: `public`
+   - **Functions directory**: `netlify/functions`
+5. (Opcional) Em **Site configuration** > **Environment variables**, adicione:
+   - `SUPABASE_URL`: sua URL do Supabase
+   - `SUPABASE_ANON_KEY`: sua chave pública anon do Supabase
+6. Clique em **Deploy site**!
+
+---
+
 ## 📂 Estrutura do Projeto
 
 ```
@@ -82,11 +118,16 @@ data-scrapter-google/
 ├── data/
 │   ├── leads.json                     # Banco de dados local persistente
 │   └── sample_google_maps_taubate.csv # Exemplo de importação Taubaté (120+ academias)
+├── netlify/
+│   └── functions/
+│       └── api.js                     # Handler Serverless para Netlify Functions
 ├── public/
 │   ├── index.html                     # Interface completa Kaptar
 │   ├── styles.css                     # Estilização Dark Theme moderna
 │   └── app.js                         # Lógica de CRM, Leaflet Maps, filtros e API
 ├── server.js                          # Servidor Node.js / Express com DuckDuckGo & Supabase
+├── netlify.toml                       # Configuração de build e redirects da Netlify
+├── supabase_schema.sql                # Script SQL para criar tabelas no Supabase
 ├── iniciar.bat                        # Script de inicialização Windows
 ├── package.json
 └── README.md
@@ -96,4 +137,5 @@ data-scrapter-google/
 
 ## 👨‍💻 Autor & Créditos
 - **Raphael de Oliveira Lima** — [@raruffles](https://github.com/raruffles)
+- Repositório oficial: [https://github.com/raruffles/mapscrapter](https://github.com/raruffles/mapscrapter)
 - Interface inspirada no design Kaptar v5.3
