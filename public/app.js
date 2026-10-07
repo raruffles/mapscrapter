@@ -7,7 +7,7 @@ let filteredLeads = [];
 let selectedNiches = ['Academia'];
 let activeFilters = { phone: false, site: false, instagram: false };
 let presenceFilter = null; // 'phone', 'site', 'instagram', 'none'
-let currentSort = 'score-desc';
+let currentSort = 'mais-viavel';
 
 // Bulk Selection
 const selectedLeadIds = new Set();
@@ -309,6 +309,12 @@ function updateTabCounts() {
   const scAll = document.getElementById('smart-count-all');
   if (scAll) scAll.innerText = allLeads.length;
 
+  const scMaisViaveis = document.getElementById('smart-count-mais-viaveis');
+  if (scMaisViaveis) scMaisViaveis.innerText = allLeads.filter(l => !l.hasWebsite && (l.hasPhone || l.hasInstagram)).length;
+
+  const scRetornar = document.getElementById('smart-count-retornar-contato');
+  if (scRetornar) scRetornar.innerText = allLeads.filter(l => l.status === 'Retornar Contato').length;
+
   const scHigh = document.getElementById('smart-count-high-rating');
   if (scHigh) scHigh.innerText = allLeads.filter(l => (l.rating || 0) >= 4.8).length;
 
@@ -415,6 +421,8 @@ function applyLeadsFilters() {
     if (crmActiveTab === 'arquivados' && lead.status !== 'Arquivado') return false;
 
     // 2. Smart Tabs (Guias Inteligentes)
+    if (smartActiveTab === 'mais_viaveis' && (lead.hasWebsite || (!lead.hasPhone && !lead.hasInstagram))) return false;
+    if (smartActiveTab === 'retornar_contato' && lead.status !== 'Retornar Contato') return false;
     if (smartActiveTab === 'high_rating' && (lead.rating || 0) < 4.8) return false;
     if (smartActiveTab === 'with_site' && !lead.hasWebsite) return false;
     if (smartActiveTab === 'no_site' && lead.hasWebsite) return false;
@@ -458,7 +466,26 @@ function applyLeadsFilters() {
   });
 
   // Sort
-  if (currentSort === 'score-desc') {
+  if (currentSort === 'mais-viavel') {
+    filteredLeads.sort((a, b) => {
+      // 1º: Priorizar SEM SITE (Oportunidade de ouro para vender site)
+      const noSiteA = (!a.hasWebsite || !a.website) ? 1 : 0;
+      const noSiteB = (!b.hasWebsite || !b.website) ? 1 : 0;
+      if (noSiteB !== noSiteA) return noSiteB - noSiteA;
+
+      // 2º: Priorizar quem tem WhatsApp / Celular
+      const waA = (a.isMobile || a.isWhatsapp || a.bestContactChannel === 'whatsapp') ? 1 : 0;
+      const waB = (b.isMobile || b.isWhatsapp || b.bestContactChannel === 'whatsapp') ? 1 : 0;
+      if (waB !== waA) return waB - waA;
+
+      // 3º: Score de Viabilidade
+      const scoreDiff = (b.score || 0) - (a.score || 0);
+      if (scoreDiff !== 0) return scoreDiff;
+
+      // 4º: Avaliação do Google
+      return (b.rating || 0) - (a.rating || 0);
+    });
+  } else if (currentSort === 'score-desc') {
     filteredLeads.sort((a, b) => (b.score || 0) - (a.score || 0));
   } else if (currentSort === 'rating-desc') {
     filteredLeads.sort((a, b) => (b.rating || 0) - (a.rating || 0));
@@ -487,16 +514,17 @@ function applyLeadsFilters() {
   updateBulkActionBar();
 }
 
-// RENDER TABLE (8 COLUNAS COMPLETAS E ESTRUTURADAS)
+// RENDER TABLE (9 COLUNAS ALINHADAS, ACESSÍVEIS WCAG AA)
 function renderTable(leads) {
   const tbody = document.getElementById('leads-table-body');
   tbody.innerHTML = '';
 
   if (leads.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:50px 20px;color:#64748b;">
-      <i class="fa-solid fa-filter-circle-xmark" style="font-size:2rem;margin-bottom:10px;display:block;"></i>
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:50px 20px;color:#94a3b8;">
+      <i class="fa-solid fa-filter-circle-xmark" style="font-size:2.2rem;margin-bottom:12px;display:block;color:#64748b;"></i>
       Nenhum lead encontrado com os filtros atuais.<br>
       <button class="btn-primary-highlight" style="margin-top:14px" onclick="openUploadModal()"><i class="fa-solid fa-cloud-arrow-up"></i> Fazer Upload de Leads do Google</button>
+      <button class="btn-secondary" style="margin-top:14px; margin-left:8px;" onclick="resetAllFilters()"><i class="fa-solid fa-arrows-rotate"></i> Limpar Filtros</button>
     </td></tr>`;
     return;
   }
@@ -505,18 +533,19 @@ function renderTable(leads) {
     const tr = document.createElement('tr');
     const isChecked = selectedLeadIds.has(lead.id);
 
-    const statusClass = 'status-' + (lead.status || 'Novo').replace(/\s+/g, '-');
+    const statusClean = (lead.status || 'Novo').replace(/\s+/g, '-');
+    const statusClass = 'status-' + statusClean;
     const ratingDisplay = lead.rating ? lead.rating.toFixed(1) : '5.0';
 
     // 1. Canal Mais Viável Badge
     let channelBadgeHtml = '';
     const channel = lead.bestContactChannel || 'phone';
     if (channel === 'whatsapp') {
-      channelBadgeHtml = `<span class="channel-badge whatsapp" title="Melhor canal: WhatsApp direto ativo"><i class="fa-brands fa-whatsapp"></i> WhatsApp</span>`;
+      channelBadgeHtml = `<span class="channel-badge whatsapp" title="Melhor canal: WhatsApp Direto ativo"><i class="fa-brands fa-whatsapp"></i> WhatsApp</span>`;
     } else if (channel === 'instagram') {
       channelBadgeHtml = `<span class="channel-badge instagram" title="Melhor canal: Direct Message no Instagram"><i class="fa-brands fa-instagram"></i> Instagram DM</span>`;
     } else if (channel === 'phone') {
-      channelBadgeHtml = `<span class="channel-badge phone" title="Melhor canal: Ligação comercial"><i class="fa-solid fa-phone"></i> Telefone</span>`;
+      channelBadgeHtml = `<span class="channel-badge phone" title="Melhor canal: Ligação comercial telefônica"><i class="fa-solid fa-phone"></i> Telefone</span>`;
     } else if (channel === 'website') {
       channelBadgeHtml = `<span class="channel-badge website" title="Melhor canal: Formulário no site oficial"><i class="fa-solid fa-globe"></i> Site Oficial</span>`;
     } else {
@@ -526,31 +555,80 @@ function renderTable(leads) {
     // 2. Presença Digital (Site oficial vs Instagram)
     const siteDomain = extractDomain(lead.website);
     const siteHtml = lead.hasWebsite && lead.website
-      ? `<a href="${lead.website}" target="_blank" class="tag-presence-link tag-site-link" title="Acessar site: ${lead.website}"><i class="fa-solid fa-globe"></i> ${siteDomain || 'Site'}</a>`
-      : `<span class="tag-no-site" title="Oportunidade: Vender criação de website"><i class="fa-solid fa-ban"></i> Sem Site</span>`;
+      ? `<a href="${lead.website}" target="_blank" class="tag-presence-link tag-site-link" title="Acessar site oficial: ${lead.website}"><i class="fa-solid fa-globe"></i> ${siteDomain || 'Site'}</a>`
+      : `<span class="tag-no-site" title="Lead SEM site oficial: Oportunidade máxima para venda de criação de website!"><i class="fa-solid fa-ban"></i> Sem Site</span>`;
 
     const igClean = lead.instagram ? lead.instagram.replace(/^@/, '') : '';
+    const igSearchUrl = `https://www.google.com/search?q=site:instagram.com+${encodeURIComponent(lead.name + ' ' + (lead.city || ''))}`;
     const igHtml = lead.hasInstagram && lead.instagram
       ? `<a href="https://instagram.com/${igClean}" target="_blank" class="tag-presence-link tag-ig-link" title="Instagram: @${igClean}"><i class="fa-brands fa-instagram"></i> @${igClean}</a>`
-      : `<span style="font-size:0.75rem; color:#64748b; padding-left:4px;" title="Instagram não identificado"><i class="fa-brands fa-instagram" style="opacity:0.3"></i> Sem IG</span>`;
+      : `<a href="${igSearchUrl}" target="_blank" class="tag-search-ig-link" title="Pesquisar perfil no Instagram"><i class="fa-brands fa-instagram" style="opacity:0.6"></i> Buscar IG <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.65rem"></i></a>`;
 
-    // 3. Contato & WhatsApp Direct
-    const phoneDisplay = lead.phone || 'Sem telefone';
-    const rawDigits = lead.rawPhone || (lead.phone ? lead.phone.replace(/\D/g, '') : '');
+    // 3. Contato (Telefone / WhatsApp) - Exibido logo no início na tela principal!
+    const phoneDisplay = lead.phone || lead.number || '';
+    const rawDigits = lead.rawPhone || (phoneDisplay ? phoneDisplay.replace(/\D/g, '') : '');
+    const isZap = lead.isMobile || lead.isWhatsapp || (rawDigits.length >= 10 && rawDigits.replace(/^55/, '')[2] === '9');
     const waNumber = rawDigits ? (rawDigits.startsWith('55') ? rawDigits : '55' + rawDigits) : '';
+    const defaultMsg = encodeURIComponent('Olá, tudo bem? Dei uma olhada no google e instagram de vocês e gostei bastante do projeto');
+
+    let contactCellHtml = '';
+    if (phoneDisplay) {
+      if (isZap) {
+        contactCellHtml = `
+          <div class="contact-card-box whatsapp-box">
+            <a href="https://wa.me/${waNumber}?text=${defaultMsg}" target="_blank" class="contact-pill-link whatsapp-pill" title="Iniciar conversa no WhatsApp com mensagem padrão">
+              <i class="fa-brands fa-whatsapp text-green"></i> <span class="phone-number-txt">${phoneDisplay}</span>
+            </a>
+            <button class="btn-copy-contact" onclick="copyContactNumber('${phoneDisplay}')" title="Copiar número para área de transferência">
+              <i class="fa-regular fa-copy"></i>
+            </button>
+          </div>
+        `;
+      } else {
+        contactCellHtml = `
+          <div class="contact-card-box phone-box">
+            <a href="tel:${rawDigits || phoneDisplay}" class="contact-pill-link phone-pill" title="Ligar para telefone fixo">
+              <i class="fa-solid fa-phone text-blue"></i> <span class="phone-number-txt">${phoneDisplay}</span>
+            </a>
+            <button class="btn-copy-contact" onclick="copyContactNumber('${phoneDisplay}')" title="Copiar número para área de transferência">
+              <i class="fa-regular fa-copy"></i>
+            </button>
+          </div>
+        `;
+      }
+    } else {
+      const googleSearchPhoneUrl = `https://www.google.com/search?q=${encodeURIComponent(lead.name + ' ' + (lead.city || '') + ' telefone whatsapp')}`;
+      contactCellHtml = `
+        <div class="contact-empty-box">
+          <span class="no-phone-tag"><i class="fa-solid fa-phone-slash"></i> Sem telefone</span>
+          <button class="btn-quick-search-phone" onclick="searchContactForLead('${lead.id}')" title="Buscar telefone e WhatsApp no DuckDuckGo">
+            <i class="fa-solid fa-magnifying-glass"></i> Buscar
+          </button>
+          <a href="${googleSearchPhoneUrl}" target="_blank" class="btn-web-search-phone" title="Pesquisar no Google"><i class="fa-brands fa-google"></i></a>
+        </div>
+      `;
+    }
+
+    // 4. Endereço limpo
+    const cityDisplay = lead.city || 'Taubaté - SP';
+    const addressDisplay = lead.address ? lead.address.substring(0, 36) + (lead.address.length > 36 ? '...' : '') : cityDisplay;
 
     tr.innerHTML = `
       <td><input type="checkbox" class="lead-check" value="${lead.id}" ${isChecked ? 'checked' : ''} onchange="toggleSelectLead('${lead.id}', this.checked)"></td>
       <td>
         <div class="company-cell">
-          <div class="company-title-row">
-            <span class="company-name" onclick="openEditLeadModal('${lead.id}')" title="Clique para gerenciar lead">${lead.name}</span>
-            <span class="google-rating-pill" title="Nota no Google Maps">
-              <i class="fa-solid fa-star"></i> ${ratingDisplay} (${lead.reviewCount || 0})
-            </span>
+          <span class="company-name" onclick="openEditLeadModal('${lead.id}')" title="Clique para editar este lead">${lead.name}</span>
+          <div class="company-meta-row">
+            <span class="company-sub">${lead.niche || 'Geral'}</span>
+            <span class="company-city" title="${lead.address || cityDisplay}">📍 ${addressDisplay}</span>
           </div>
-          <span class="company-sub">${lead.niche || 'Geral'}</span>
-          <span class="company-city">📍 ${lead.address ? lead.address.substring(0, 36) + (lead.address.length > 36 ? '...' : '') : (lead.city || 'Taubaté - SP')}</span>
+        </div>
+      </td>
+      <td style="text-align: center;">
+        <div class="google-rating-col">
+          <span class="google-rating-pill" title="Avaliação Google: ${ratingDisplay} com ${lead.reviewCount || 0} avaliações">
+            <i class="fa-solid fa-star"></i> ${ratingDisplay} <span class="review-count">(${lead.reviewCount || 0})</span>
+          </span>
         </div>
       </td>
       <td>
@@ -564,22 +642,21 @@ function renderTable(leads) {
       </td>
       <td>
         <div class="phone-cell">
-          <span>${phoneDisplay}</span>
-          ${waNumber ? `<a href="https://wa.me/${waNumber}?text=${encodeURIComponent('Olá, tudo bem? Dei uma olhada no google e instagram de vocês e gostei bastante do projeto')}" target="_blank" class="presence-icon-link" title="Abrir conversa no WhatsApp com mensagem padrão"><i class="fa-brands fa-whatsapp text-green"></i></a>` : ''}
-          <button class="btn-inline-edit" onclick="navigator.clipboard.writeText('${phoneDisplay}'); showToast('Telefone copiado!');" title="Copiar telefone"><i class="fa-regular fa-copy"></i></button>
+          ${contactCellHtml}
         </div>
       </td>
       <td>
         <select class="status-pill-select ${statusClass}" onchange="updateLeadStatus('${lead.id}', this.value)">
-          <option value="Novo" ${lead.status === 'Novo' ? 'selected' : ''}>Novo</option>
-          <option value="Em Contato" ${lead.status === 'Em Contato' ? 'selected' : ''}>Em Contato</option>
-          <option value="Qualificado" ${lead.status === 'Qualificado' ? 'selected' : ''}>Qualificado</option>
-          <option value="Fechado" ${lead.status === 'Fechado' ? 'selected' : ''}>Fechado</option>
-          <option value="Arquivado" ${lead.status === 'Arquivado' ? 'selected' : ''}>Arquivado</option>
+          <option value="Novo" ${lead.status === 'Novo' ? 'selected' : ''}>🔵 Novo</option>
+          <option value="Retornar Contato" ${lead.status === 'Retornar Contato' ? 'selected' : ''}>⏰ Retornar Contato</option>
+          <option value="Em Contato" ${lead.status === 'Em Contato' ? 'selected' : ''}>💬 Em Contato</option>
+          <option value="Qualificado" ${lead.status === 'Qualificado' ? 'selected' : ''}>⭐ Qualificado</option>
+          <option value="Fechado" ${lead.status === 'Fechado' ? 'selected' : ''}>🤝 Fechado</option>
+          <option value="Arquivado" ${lead.status === 'Arquivado' ? 'selected' : ''}>📁 Arquivado</option>
         </select>
       </td>
       <td>
-        <div class="score-cell">
+        <div class="score-cell" title="Pontuação de Viabilidade: ${lead.score || 85}/100">
           <div class="score-bar">
             <div class="score-fill" style="width: ${lead.score || 85}%;"></div>
           </div>
@@ -588,22 +665,22 @@ function renderTable(leads) {
       </td>
       <td>
         <div class="actions-cell">
-          <!-- WHATSAPP PROSPECTING SCRIPT ACTION -->
+          <!-- WHATSAPP PROSPECTING MODAL ACTION -->
           <button class="action-btn wa-btn" onclick="openWhatsAppModal('${lead.id}')" title="Gerar Prospecção Fria WhatsApp com Rapport">
             <i class="fa-brands fa-whatsapp"></i>
           </button>
-          <!-- INSTAGRAM / SCAN ACTION -->
-          ${lead.hasInstagram
+          <!-- INSTAGRAM ACTION -->
+          ${lead.hasInstagram && igClean
             ? `<a href="https://instagram.com/${igClean}" target="_blank" class="action-btn" title="Abrir perfil no Instagram" style="color:#e1306c"><i class="fa-brands fa-instagram"></i></a>`
             : `<button class="action-btn" onclick="startInstagramQuickScan(['${lead.id}'])" title="Buscar Instagram deste lead no DuckDuckGo"><i class="fa-brands fa-instagram" style="opacity:0.5"></i></button>`
           }
+          <!-- RETORNAR CONTATO TOGGLE -->
+          <button class="action-btn ${lead.status === 'Retornar Contato' ? 'clock-active' : ''}" onclick="toggleRetornarContato('${lead.id}')" title="Marcar para Retornar Contato mais tarde">
+            <i class="fa-solid fa-clock"></i>
+          </button>
           <!-- STAR / QUALIFY -->
           <button class="action-btn ${lead.status === 'Qualificado' ? 'starred' : ''}" onclick="toggleQualify('${lead.id}')" title="Qualificar Lead">
             <i class="fa-solid fa-star"></i>
-          </button>
-          <!-- HANDSHAKE / FECHADO -->
-          <button class="action-btn ${lead.status === 'Fechado' ? 'closed' : ''}" onclick="toggleDealClosed('${lead.id}')" title="Fechar Negócio">
-            <i class="fa-solid fa-handshake"></i>
           </button>
           <!-- EDIT / MANAGE -->
           <button class="action-btn" onclick="openEditLeadModal('${lead.id}')" title="Editar Informações Completas">
@@ -1688,4 +1765,58 @@ function showToast(message) {
   toastTimeout = setTimeout(() => {
     toast.classList.add('hidden');
   }, 3500);
+}
+
+// ==========================================
+// CONTACT, EXPORT & RETORNAR CONTATO HELPERS
+// ==========================================
+
+function copyContactNumber(num) {
+  if (!num) return;
+  navigator.clipboard.writeText(num).then(() => {
+    showToast(`📋 Número ${num} copiado para a área de transferência!`);
+  }).catch(() => {
+    showToast(`Número: ${num}`);
+  });
+}
+
+async function toggleRetornarContato(id) {
+  const lead = allLeads.find(l => l.id === id);
+  if (!lead) return;
+  const newStatus = lead.status === 'Retornar Contato' ? 'Novo' : 'Retornar Contato';
+  await updateLeadStatus(id, newStatus);
+  showToast(newStatus === 'Retornar Contato' ? '⏰ Lead agendado para Retornar Contato!' : '🔵 Lead retornado para Novo');
+}
+
+async function searchContactForLead(id) {
+  showToast('🔍 Buscando contato na web (DuckDuckGo)...');
+  try {
+    const res = await fetch('/api/leads/quick-scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [id] })
+    });
+    const data = await res.json();
+    if (data.success) {
+      await loadLeads();
+      const updated = allLeads.find(l => l.id === id);
+      if (updated && (updated.phone || updated.instagram)) {
+        showToast(`🎉 Encontrado! Tel: ${updated.phone || 'N/A'} | IG: ${updated.instagram || 'N/A'}`);
+      } else {
+        showToast('Nenhum telefone público encontrado automaticamente. Tente a busca no Google.');
+      }
+    }
+  } catch (e) {
+    showToast('Erro ao buscar contato: ' + e.message);
+  }
+}
+
+function exportLeadsCSV() {
+  window.location.href = '/api/export-csv';
+  showToast('📥 Baixando arquivo CSV de leads...');
+}
+
+function exportLeadsJSON() {
+  window.location.href = '/api/export-json';
+  showToast('📥 Baixando arquivo JSON de leads...');
 }

@@ -149,32 +149,46 @@ function cleanOldBackups() {
 
 // Phone formatter for Brazil & international
 function formatPhoneNumber(phone) {
-  if (!phone) return { formatted: '', raw: '', isMobile: false };
+  if (!phone) return { formatted: '', raw: '', isMobile: false, isWhatsapp: false };
   const rawDigits = phone.toString().replace(/\D/g, '');
-  if (!rawDigits) return { formatted: phone.toString().trim(), raw: '', isMobile: false };
+  if (!rawDigits) return { formatted: phone.toString().trim(), raw: '', isMobile: false, isWhatsapp: false };
 
   let raw = rawDigits;
-  if (raw.length === 12 || raw.length === 13) {
-    if (raw.startsWith('55')) {
-      raw = raw.substring(2);
-    }
+  if ((raw.length === 12 || raw.length === 13) && raw.startsWith('55')) {
+    raw = raw.substring(2);
   }
 
   let formatted = phone.toString().trim();
   let isMobile = false;
+  let isWhatsapp = false;
 
-  if (raw.length === 10) {
-    // (XX) XXXX-XXXX (Fixo)
-    formatted = `(${raw.substring(0, 2)}) ${raw.substring(2, 6)}-${raw.substring(6)}`;
-    isMobile = false;
-  } else if (raw.length === 11) {
-    // (XX) 9XXXX-XXXX (Celular / WhatsApp)
+  if (raw.length === 11) {
+    // (XX) 9XXXX-XXXX -> Celular / WhatsApp
     formatted = `(${raw.substring(0, 2)}) ${raw.substring(2, 7)}-${raw.substring(7)}`;
+    // Se o primeiro dígito após DDD é 9, é celular/zap
     isMobile = raw[2] === '9';
+    isWhatsapp = isMobile;
+  } else if (raw.length === 10) {
+    // (XX) XXXX-XXXX
+    formatted = `(${raw.substring(0, 2)}) ${raw.substring(2, 6)}-${raw.substring(6)}`;
+    // Se o dígito após DDD é 9 (ex: 17 9122-5471), é formato móvel/zap sem o 9 adicional
+    if (raw[2] === '9') {
+      isMobile = true;
+      isWhatsapp = true;
+    } else {
+      // Se começa com 2, 3, 4, 5 (ex: 12 3912-3456, 11 3345-6789), é estritamente telefone fixo
+      isMobile = false;
+      isWhatsapp = false;
+    }
+  } else if (raw.length === 8 || raw.length === 9) {
+    if (raw[0] === '9') {
+      isMobile = true;
+      isWhatsapp = true;
+    }
   }
 
   const finalRaw = raw.length >= 10 ? (raw.startsWith('55') ? raw : '55' + raw) : rawDigits;
-  return { formatted, raw: finalRaw, isMobile };
+  return { formatted, raw: finalRaw, isMobile, isWhatsapp };
 }
 
 // Rating parser (supports "4,6", "4.6", 4.6)
@@ -207,28 +221,35 @@ function determineBestContactChannel(hasPhone, isMobile, hasInstagram, hasWebsit
   return 'maps';                              // Prioridade 5: Perfil no Maps / Presencial
 }
 
-// Calculate Opportunity Score for Prospecting
-function calculateLeadScore(hasPhone, hasWebsite, hasInstagram, rating, reviewCount) {
+// Calculate Opportunity / Viability Score for Prospecting (Higher score = Better sales target for website / digital agency)
+function calculateLeadScore(hasPhone, hasWebsite, hasInstagram, rating, reviewCount, isMobile = false) {
   let score = 40;
-  // High reputation = strong business with paying capacity
-  if (rating >= 4.8) score += 15;
-  else if (rating >= 4.5) score += 10;
-  else if (rating >= 4.0) score += 5;
 
-  // Active customer flow (Reviews volume)
-  if (reviewCount >= 100) score += 15;
-  else if (reviewCount >= 50) score += 10;
-  else if (reviewCount >= 20) score += 5;
+  // 1. Ausência de site próprio = Urgência Máxima para venda de site (+30)
+  if (!hasWebsite) {
+    score += 30;
+  } else {
+    // Já possui site: menor prioridade para venda de site novo (+10)
+    score += 10;
+  }
 
-  // Contact viability
-  if (hasPhone) score += 15;
-  if (hasInstagram) score += 10;
+  // 2. Viabilidade e facilidade de contato direto
+  if (hasPhone && isMobile) {
+    score += 20; // WhatsApp ativo: melhor canal de fechamento (+20)
+  } else if (hasInstagram) {
+    score += 15; // Instagram ativo: abordagem viável por DM (+15)
+  } else if (hasPhone) {
+    score += 10; // Telefone fixo comercial (+10)
+  }
 
-  // Sales Opportunity:
-  // Sem site: Alta urgência e oportunidade para venda de Site & Landing Page (+15)
-  // Com site: Oportunidade para tráfego pago, SEO e anúncios (+10)
-  if (!hasWebsite) score += 15;
-  else score += 10;
+  // 3. Reputação & Negócio Ativo no Google Maps
+  if (rating >= 4.8) score += 10;
+  else if (rating >= 4.5) score += 7;
+  else if (rating >= 4.0) score += 4;
+
+  if (reviewCount >= 50) score += 10;
+  else if (reviewCount >= 20) score += 7;
+  else if (reviewCount >= 5) score += 4;
 
   return Math.min(Math.max(score, 50), 99);
 }
@@ -391,11 +412,14 @@ function mapGoogleScraperRecord(item, customNiche = 'Geral') {
   const checkUrl = (urlStr) => {
     if (!urlStr) return;
     const cleanUrl = urlStr.trim();
-    if (cleanUrl.includes('instagram.com/')) {
-      const match = cleanUrl.match(/instagram\.com\/([a-zA-Z0-9_\.]+)/i);
+    if (cleanUrl.includes('instagram.com/') || cleanUrl.includes('instagr.am/')) {
+      const match = cleanUrl.match(/instagram\.com\/([a-zA-Z0-9_\.]+)/i) || cleanUrl.match(/instagr\.am\/([a-zA-Z0-9_\.]+)/i);
       if (match && !instagram) instagram = '@' + match[1].replace(/\/$/, '');
+      // O site informado é apenas o Instagram da empresa - não tratar como site oficial próprio
+      return;
     } else if (cleanUrl.includes('wa.me/') || cleanUrl.includes('api.whatsapp.com/')) {
       if (!whatsappLink) whatsappLink = cleanUrl;
+      return;
     } else if (!cleanUrl.includes('google.com/maps')) {
       if (!website) {
         website = cleanUrl.startsWith('http') ? cleanUrl : 'https://' + cleanUrl;
@@ -453,18 +477,22 @@ function mapGoogleScraperRecord(item, customNiche = 'Geral') {
 
   let type = 'Sem presença';
   if (website) {
-    if (website.includes('wix') || website.includes('wordpress.com') || website.includes('blogspot') || website.startsWith('http://')) {
+    if (website.includes('wix') || website.includes('wordpress.com') || website.includes('blogspot') || website.includes('linktr.ee') || website.startsWith('http://')) {
       type = 'Site ruim';
     } else {
       type = 'Site bom';
     }
+  } else if (instagram) {
+    type = 'Sem site (Só Instagram)';
   }
 
   const hasPhone = !!phoneData.formatted;
   const hasWebsite = !!website;
   const hasInstagram = !!instagram;
   const bestContactChannel = determineBestContactChannel(hasPhone, phoneData.isMobile, hasInstagram, hasWebsite);
-  const score = calculateLeadScore(hasPhone, hasWebsite, hasInstagram, rating, reviewCount);
+  const score = calculateLeadScore(hasPhone, hasWebsite, hasInstagram, rating, reviewCount, phoneData.isMobile);
+
+  const finalWaLink = whatsappLink || ((phoneData.isMobile || phoneData.isWhatsapp) && phoneData.raw ? `https://wa.me/${phoneData.raw}` : null);
 
   return {
     id: 'lead-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
@@ -478,13 +506,14 @@ function mapGoogleScraperRecord(item, customNiche = 'Geral') {
     number: phoneData.formatted || '',
     phoneNumber: phoneData.formatted || '',
     rawNumber: phoneData.raw || '',
-    whatsappNumber: phoneData.raw || '',
+    whatsappNumber: (phoneData.isMobile || phoneData.isWhatsapp) ? (phoneData.raw || '') : '',
     isMobile: phoneData.isMobile,
+    isWhatsapp: phoneData.isWhatsapp,
     rating: parseFloat(rating.toFixed(1)),
     reviewCount: reviewCount,
     website: website,
     instagram: instagram,
-    whatsappLink: whatsappLink || (phoneData.raw ? `https://wa.me/${phoneData.raw}` : null),
+    whatsappLink: finalWaLink,
     googleMapsUrl: googleMapsUrl || null,
     imageUrl: imageUrl || null,
     hasPhone,
@@ -1116,13 +1145,26 @@ app.post('/api/leads/manual', (req, res) => {
     const parsedReviews = parseReviewCount(reviews);
 
     let siteUrl = website ? website.trim() : null;
-    if (siteUrl && !siteUrl.startsWith('http')) siteUrl = 'https://' + siteUrl;
+    let finalInstagram = instagram ? (instagram.startsWith('@') ? instagram.trim() : '@' + instagram.trim()) : null;
+
+    if (siteUrl) {
+      if (siteUrl.includes('instagram.com/') || siteUrl.includes('instagr.am/')) {
+        const m = siteUrl.match(/instagram\.com\/([a-zA-Z0-9_\.]+)/i) || siteUrl.match(/instagr\.am\/([a-zA-Z0-9_\.]+)/i);
+        if (m && !finalInstagram) {
+          finalInstagram = '@' + m[1].replace(/\/$/, '');
+        }
+        siteUrl = null;
+      } else if (!siteUrl.startsWith('http')) {
+        siteUrl = 'https://' + siteUrl;
+      }
+    }
 
     const hasPhone = !!phoneData.formatted;
     const hasWebsite = !!siteUrl;
-    const hasInstagram = !!instagram;
+    const hasInstagram = !!finalInstagram;
     const bestContactChannel = determineBestContactChannel(hasPhone, phoneData.isMobile, hasInstagram, hasWebsite);
-    const score = calculateLeadScore(hasPhone, hasWebsite, hasInstagram, parsedRating, parsedReviews);
+    const score = calculateLeadScore(hasPhone, hasWebsite, hasInstagram, parsedRating, parsedReviews, phoneData.isMobile);
+    const waLink = (phoneData.isMobile || phoneData.isWhatsapp) && phoneData.raw ? `https://wa.me/${phoneData.raw}` : null;
 
     const newLead = {
       id: 'lead-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
@@ -1133,16 +1175,22 @@ app.post('/api/leads/manual', (req, res) => {
       city: city ? city.trim() : 'Taubaté - SP',
       phone: phoneData.formatted || '',
       rawPhone: phoneData.raw || '',
+      number: phoneData.formatted || '',
+      phoneNumber: phoneData.formatted || '',
+      rawNumber: phoneData.raw || '',
+      whatsappNumber: (phoneData.isMobile || phoneData.isWhatsapp) ? (phoneData.raw || '') : '',
       isMobile: phoneData.isMobile,
+      isWhatsapp: phoneData.isWhatsapp,
       rating: parsedRating,
       reviewCount: parsedReviews,
       website: siteUrl,
-      instagram: instagram ? (instagram.startsWith('@') ? instagram : '@' + instagram) : null,
+      instagram: finalInstagram,
+      whatsappLink: waLink,
       hasPhone,
       hasWebsite,
       hasInstagram,
       bestContactChannel,
-      type: siteUrl ? 'Site bom' : 'Sem presença',
+      type: siteUrl ? 'Site bom' : (finalInstagram ? 'Sem site (Só Instagram)' : 'Sem presença'),
       status: status || 'Novo',
       score,
       notes: notes || 'Cadastrado manualmente',
@@ -1174,19 +1222,40 @@ app.put('/api/leads/:id', (req, res) => {
     const phoneData = formatPhoneNumber(updates.phone);
     updates.phone = phoneData.formatted;
     updates.rawPhone = phoneData.raw;
+    updates.number = phoneData.formatted;
+    updates.phoneNumber = phoneData.formatted;
+    updates.rawNumber = phoneData.raw;
+    updates.whatsappNumber = (phoneData.isMobile || phoneData.isWhatsapp) ? phoneData.raw : '';
     updates.isMobile = phoneData.isMobile;
+    updates.isWhatsapp = phoneData.isWhatsapp;
     updates.hasPhone = !!phoneData.formatted;
+    if (phoneData.isMobile || phoneData.isWhatsapp) {
+      updates.whatsappLink = `https://wa.me/${phoneData.raw}`;
+    }
   }
 
   if (updates.website !== undefined) {
     let site = updates.website ? updates.website.trim() : null;
-    if (site && !site.startsWith('http')) site = 'https://' + site;
+    if (site) {
+      if (site.includes('instagram.com/') || site.includes('instagr.am/')) {
+        const m = site.match(/instagram\.com\/([a-zA-Z0-9_\.]+)/i) || site.match(/instagr\.am\/([a-zA-Z0-9_\.]+)/i);
+        if (m && !updates.instagram) {
+          updates.instagram = '@' + m[1].replace(/\/$/, '');
+        }
+        site = null;
+      } else if (!site.startsWith('http')) {
+        site = 'https://' + site;
+      }
+    }
     updates.website = site;
     updates.hasWebsite = !!site;
-    updates.type = site ? 'Site bom' : 'Sem presença';
+    updates.type = site ? 'Site bom' : (updates.instagram ? 'Sem site (Só Instagram)' : 'Sem presença');
   }
 
   if (updates.instagram !== undefined) {
+    if (updates.instagram && !updates.instagram.startsWith('@')) {
+      updates.instagram = '@' + updates.instagram.trim();
+    }
     updates.hasInstagram = !!updates.instagram;
   }
 
@@ -1198,13 +1267,15 @@ app.put('/api/leads/:id', (req, res) => {
   const reviews = updates.reviewCount !== undefined ? updates.reviewCount : leads[idx].reviewCount;
 
   updates.bestContactChannel = determineBestContactChannel(hasPhone, isMobile, hasInstagram, hasWebsite);
-  updates.score = calculateLeadScore(hasPhone, hasWebsite, hasInstagram, rating, reviews);
+  updates.score = calculateLeadScore(hasPhone, hasWebsite, hasInstagram, rating, reviews, isMobile);
+  updates.updatedAt = new Date().toISOString();
 
-  leads[idx] = { ...leads[idx], ...updates, updatedAt: new Date().toISOString() };
-  saveLeads(leads, false);
+  leads[idx] = { ...leads[idx], ...updates };
+  saveLeads(leads, true);
 
   res.json({ success: true, lead: leads[idx] });
 });
+
 
 // API: Bulk Status Update
 app.post('/api/leads/bulk-status', (req, res) => {
