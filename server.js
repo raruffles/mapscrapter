@@ -100,6 +100,54 @@ function setActiveSessionMeta(meta) {
   } catch (e) {}
 }
 
+// Helper: Auto-save active session with leads
+function autoSaveActiveSession(leads, customSessionName = null, niche = null, city = null) {
+  if (!leads || leads.length === 0) return null;
+  let activeMeta = getActiveSessionMeta();
+  let sessions = getSessions();
+  const now = new Date().toISOString();
+
+  const detectedNiche = niche && niche !== 'Geral' ? niche : (leads[0] ? (leads[0].niche || 'Geral') : 'Geral');
+  const detectedCity = city || (leads[0] ? (leads[0].city || 'Taubaté - SP') : 'Taubaté - SP');
+  const defaultName = customSessionName || `${detectedNiche} - ${detectedCity} (${leads.length} leads)`;
+
+  let targetSession = null;
+  if (activeMeta && activeMeta.id) {
+    targetSession = sessions.find(s => s.id === activeMeta.id);
+  }
+
+  if (targetSession) {
+    if (customSessionName) targetSession.name = customSessionName;
+    targetSession.niche = detectedNiche;
+    targetSession.city = detectedCity;
+    targetSession.leads = leads;
+    targetSession.updatedAt = now;
+  } else {
+    targetSession = {
+      id: 'sess-' + Date.now(),
+      name: defaultName,
+      niche: detectedNiche,
+      city: detectedCity,
+      leads: leads,
+      createdAt: now,
+      updatedAt: now
+    };
+    sessions.unshift(targetSession);
+  }
+
+  saveSessions(sessions);
+  const newMeta = {
+    id: targetSession.id,
+    name: targetSession.name,
+    niche: targetSession.niche,
+    city: targetSession.city,
+    leadCount: leads.length,
+    updatedAt: now
+  };
+  setActiveSessionMeta(newMeta);
+  return newMeta;
+}
+
 // Helper: Read leads
 function getLeads() {
   try {
@@ -124,6 +172,23 @@ function saveLeads(leads, createBackup = false) {
       cleanOldBackups();
     }
     fs.writeFileSync(DATA_FILE, JSON.stringify(leads, null, 2), 'utf-8');
+
+    // Mantenha a sessão ativa sincronizada se houver leads
+    if (Array.isArray(leads) && leads.length > 0) {
+      try {
+        const activeMeta = getActiveSessionMeta();
+        if (activeMeta && activeMeta.id) {
+          let sessions = getSessions();
+          const sess = sessions.find(s => s.id === activeMeta.id);
+          if (sess) {
+            sess.leads = leads;
+            sess.updatedAt = new Date().toISOString();
+            saveSessions(sessions);
+          }
+        }
+      } catch (sessSyncErr) {}
+    }
+
     return true;
   } catch (err) {
     console.error('Error saving leads:', err);
@@ -746,13 +811,16 @@ app.post('/api/leads/upload', (req, res) => {
         replacedLeads.push(mappedLead);
       });
       saveLeads(replacedLeads, true);
+      const sessionName = req.body.sessionName || (req.body.fileName ? req.body.fileName.replace(/\.[^/.]+$/, '') : null);
+      const activeSession = autoSaveActiveSession(replacedLeads, sessionName, defaultNiche, replacedLeads[0] ? replacedLeads[0].city : null);
       return res.json({
         success: true,
         totalParsed: parsedRows.length,
         importedCount: replacedLeads.length,
         updatedCount: 0,
         skippedCount: 0,
-        totalLeads: replacedLeads.length
+        totalLeads: replacedLeads.length,
+        activeSession
       });
     }
 
@@ -817,6 +885,8 @@ app.post('/api/leads/upload', (req, res) => {
 
     const finalLeads = [...newLeadsToAdd, ...currentLeads];
     saveLeads(finalLeads, true);
+    const sessionName = req.body.sessionName || (req.body.fileName ? req.body.fileName.replace(/\.[^/.]+$/, '') : null);
+    const activeSession = autoSaveActiveSession(finalLeads, sessionName, defaultNiche, finalLeads[0] ? finalLeads[0].city : null);
 
     res.json({
       success: true,
@@ -824,7 +894,8 @@ app.post('/api/leads/upload', (req, res) => {
       importedCount,
       updatedCount,
       skippedCount,
-      totalLeads: finalLeads.length
+      totalLeads: finalLeads.length,
+      activeSession
     });
   } catch (err) {
     console.error('Error in /api/leads/upload:', err);
@@ -872,13 +943,15 @@ app.post('/api/leads/google-sheets', async (req, res) => {
         replacedLeads.push(mappedLead);
       });
       saveLeads(replacedLeads, true);
+      const activeSession = autoSaveActiveSession(replacedLeads, `Google Planilhas - ${defaultNiche}`, defaultNiche, replacedLeads[0] ? replacedLeads[0].city : null);
       return res.json({
         success: true,
         totalParsed: parsedRows.length,
         importedCount: replacedLeads.length,
         updatedCount: 0,
         skippedCount: 0,
-        totalLeads: replacedLeads.length
+        totalLeads: replacedLeads.length,
+        activeSession
       });
     }
 
@@ -923,6 +996,7 @@ app.post('/api/leads/google-sheets', async (req, res) => {
 
     const finalLeads = [...newLeadsToAdd, ...currentLeads];
     saveLeads(finalLeads, true);
+    const activeSession = autoSaveActiveSession(finalLeads, `Google Planilhas - ${defaultNiche}`, defaultNiche, finalLeads[0] ? finalLeads[0].city : null);
 
     res.json({
       success: true,
@@ -930,7 +1004,8 @@ app.post('/api/leads/google-sheets', async (req, res) => {
       importedCount,
       updatedCount,
       skippedCount,
-      totalLeads: finalLeads.length
+      totalLeads: finalLeads.length,
+      activeSession
     });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao conectar ao Google Planilhas', details: err.message });
@@ -1108,6 +1183,31 @@ app.post('/api/leads/quick-scan', async (req, res) => {
 // API: Get all leads
 app.get('/api/leads', async (req, res) => {
   let leads = getLeads();
+
+  // Auto-restauração permanente: se leads.json estiver vazio mas houver sessões salvas, restaura automaticamente!
+  if (!leads || leads.length === 0) {
+    const sessions = getSessions();
+    const activeMeta = getActiveSessionMeta();
+    let foundSession = null;
+    if (activeMeta && activeMeta.id) {
+      foundSession = sessions.find(s => s.id === activeMeta.id);
+    }
+    if (!foundSession && sessions.length > 0) {
+      foundSession = sessions[0];
+    }
+    if (foundSession && Array.isArray(foundSession.leads) && foundSession.leads.length > 0) {
+      leads = foundSession.leads;
+      saveLeads(leads, false);
+      setActiveSessionMeta({
+        id: foundSession.id,
+        name: foundSession.name,
+        niche: foundSession.niche,
+        city: foundSession.city
+      });
+      return res.json(leads);
+    }
+  }
+
   if ((!leads || leads.length === 0) && isServerless) {
     const sb = getSupabaseConfig();
     if (sb) {
@@ -1443,18 +1543,24 @@ app.get('/api/templates/:id', (req, res) => {
   res.json({ lead, templates });
 });
 
-// API: Export CSV
-app.get('/api/export-csv', (req, res) => {
-  const leads = getLeads();
-  let csv = 'Nome,Nicho,Telefone,WhatsApp Raw,Melhor Canal,Avaliacao Google,Avaliacoes,Site,Instagram,Tipo,Status,Score,Endereco,Cidade,Google Maps URL\n';
+// Helper: Build enriched CSV from leads
+function buildEnrichedCSV(leads) {
+  let csv = 'Nome da Empresa,Nicho / Categoria,Telefone Formatado,WhatsApp Raw,É WhatsApp,Link WhatsApp,Melhor Canal de Contato,Avaliação Google,Qtd Avaliações,Site Oficial,Instagram,Tipo Presença,Status CRM,Score Viabilidade,Endereço Completo,Cidade,Link Busca Google,Google Maps URL,Notas / Observações,Data Captura\n';
 
   leads.forEach(l => {
     const clean = str => `"${(str || '').toString().replace(/"/g, '""')}"`;
+    const isZap = (l.isMobile || l.isWhatsapp) ? 'Sim' : 'Não';
+    const waLink = l.whatsappLink || (l.rawPhone ? `https://wa.me/${l.rawPhone.startsWith('55') ? l.rawPhone : '55' + l.rawPhone}` : '');
+    const googleSearch = `https://www.google.com/search?q=${encodeURIComponent((l.name || '') + ' ' + (l.city || 'Taubaté'))}`;
+    const maps = l.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((l.name || '') + ' ' + (l.address || l.city || 'Taubaté'))}`;
+
     csv += [
       clean(l.name),
       clean(l.niche),
-      clean(l.phone),
+      clean(l.phone || l.number),
       clean(l.rawPhone),
+      clean(isZap),
+      clean(waLink),
       clean(l.bestContactChannel),
       clean(l.rating),
       clean(l.reviewCount),
@@ -1465,13 +1571,120 @@ app.get('/api/export-csv', (req, res) => {
       clean(l.score),
       clean(l.address),
       clean(l.city),
-      clean(l.googleMapsUrl)
+      clean(googleSearch),
+      clean(maps),
+      clean(l.notes),
+      clean(l.createdAt)
     ].join(',') + '\n';
   });
+  return csv;
+}
 
+// API: Export CSV
+app.get('/api/export-csv', (req, res) => {
+  const leads = getLeads();
+  const csv = buildEnrichedCSV(leads);
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="leads_mapscraper_export.csv"');
   res.send('\uFEFF' + csv);
+});
+
+// API: Export TSV (Copiar/Colar direto em células do Google Planilhas)
+app.get('/api/export-tsv', (req, res) => {
+  const leads = getLeads();
+  const headers = ['Empresa', 'Nicho', 'Telefone', 'WhatsApp Raw', 'É Zap', 'Link WhatsApp', 'Melhor Canal', 'Nota Google', 'Avaliações', 'Site', 'Instagram', 'Tipo', 'Status', 'Score', 'Endereço', 'Cidade', 'Busca Google', 'Google Maps'];
+  let tsv = headers.join('\t') + '\n';
+
+  leads.forEach(l => {
+    const isZap = (l.isMobile || l.isWhatsapp) ? 'Sim' : 'Não';
+    const waLink = l.whatsappLink || (l.rawPhone ? `https://wa.me/${l.rawPhone.startsWith('55') ? l.rawPhone : '55' + l.rawPhone}` : '');
+    const googleSearch = `https://www.google.com/search?q=${encodeURIComponent((l.name || '') + ' ' + (l.city || 'Taubaté'))}`;
+    const maps = l.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((l.name || '') + ' ' + (l.address || l.city || 'Taubaté'))}`;
+
+    const row = [
+      l.name || '',
+      l.niche || '',
+      l.phone || l.number || '',
+      l.rawPhone || '',
+      isZap,
+      waLink,
+      l.bestContactChannel || '',
+      l.rating || '',
+      l.reviewCount || 0,
+      l.website || '',
+      l.instagram || '',
+      l.type || '',
+      l.status || '',
+      l.score || '',
+      l.address || '',
+      l.city || '',
+      googleSearch,
+      maps
+    ].map(v => ('' + v).replace(/\t/g, ' ').replace(/\r?\n/g, ' '));
+
+    tsv += row.join('\t') + '\n';
+  });
+
+  res.setHeader('Content-Type', 'text/tab-separated-values; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="leads_google_planilhas.tsv"');
+  res.send('\uFEFF' + tsv);
+});
+
+// API: Sync Leads Cache from Browser localStorage (Garante que nunca perca dados se servidor reiniciar)
+app.post('/api/leads/sync-cache', (req, res) => {
+  try {
+    const { leads, session } = req.body;
+    if (!Array.isArray(leads) || leads.length === 0) {
+      return res.status(400).json({ error: 'Nenhum lead fornecido para restauração' });
+    }
+    const currentLeads = getLeads();
+    if (currentLeads.length === 0) {
+      saveLeads(leads, true);
+      if (session) {
+        autoSaveActiveSession(leads, session.name, session.niche, session.city);
+      }
+      return res.json({ success: true, restoredCount: leads.length });
+    }
+    res.json({ success: true, message: 'Base já ativa', currentCount: currentLeads.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Send Leads to External Webhook (Google Sheets App Script / Google Form / Zapier / Make / n8n)
+app.post('/api/export/webhook', async (req, res) => {
+  try {
+    const { webhookUrl } = req.body;
+    if (!webhookUrl || !webhookUrl.startsWith('http')) {
+      return res.status(400).json({ error: 'URL de Webhook inválida.' });
+    }
+
+    const leads = getLeads();
+    const activeMeta = getActiveSessionMeta();
+
+    const payload = {
+      event: 'mapscrapter_leads_export',
+      timestamp: new Date().toISOString(),
+      session: activeMeta,
+      totalLeads: leads.length,
+      leads: leads
+    };
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+      res.json({ success: true, message: `Sucesso! ${leads.length} leads enviados para a planilha/webhook.` });
+    } else {
+      const errTxt = await response.text();
+      res.status(400).json({ error: `Webhook retornou código ${response.status}: ${errTxt.substring(0, 150)}` });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao conectar ao webhook: ' + err.message });
+  }
 });
 
 // API: Export JSON
@@ -1656,28 +1869,7 @@ app.get('/api/sessions/:id/export-csv', (req, res) => {
   if (!session) return res.status(404).send('Sessão não encontrada');
 
   const leads = session.leads || [];
-  let csv = 'Nome,Nicho,Telefone,WhatsApp Raw,Melhor Canal,Avaliacao Google,Avaliacoes,Site,Instagram,Tipo,Status,Score,Endereco,Cidade,Google Maps URL\n';
-
-  leads.forEach(l => {
-    const clean = str => `"${(str || '').toString().replace(/"/g, '""')}"`;
-    csv += [
-      clean(l.name),
-      clean(l.niche),
-      clean(l.phone),
-      clean(l.rawPhone),
-      clean(l.bestContactChannel),
-      clean(l.rating),
-      clean(l.reviewCount),
-      clean(l.website),
-      clean(l.instagram),
-      clean(l.type),
-      clean(l.status),
-      clean(l.score),
-      clean(l.address),
-      clean(l.city),
-      clean(l.googleMapsUrl)
-    ].join(',') + '\n';
-  });
+  const csv = buildEnrichedCSV(leads);
 
   const safeName = (session.name || 'sessao').replace(/[^a-zA-Z0-9_\-]/g, '_');
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');

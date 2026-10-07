@@ -259,11 +259,35 @@ async function executeRealScraper() {
   }
 }
 
-// LOAD LEADS FROM API
+// LOAD LEADS FROM API WITH AUTO-PERSISTENCE
 async function loadLeads() {
   try {
     const res = await fetch('/api/leads');
     allLeads = await res.json();
+
+    // Persistência automática em cache do navegador
+    if (Array.isArray(allLeads) && allLeads.length > 0) {
+      localStorage.setItem('mapscrapter_leads_cache', JSON.stringify(allLeads));
+      localStorage.setItem('mapscrapter_cache_time', new Date().toISOString());
+    } else {
+      // Se o backend retornou vazio e o usuário NÃO clicou em limpar explicitamente, restaura do cache local
+      const cached = localStorage.getItem('mapscrapter_leads_cache');
+      const userCleared = localStorage.getItem('mapscrapter_user_cleared');
+      if (cached && !userCleared) {
+        try {
+          const parsedCache = JSON.parse(cached);
+          if (Array.isArray(parsedCache) && parsedCache.length > 0) {
+            allLeads = parsedCache;
+            // Sincroniza de volta para o backend
+            fetch('/api/leads/sync-cache', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ leads: allLeads, session: activeSessionMeta })
+            }).catch(e => console.warn(e));
+          }
+        } catch (e) {}
+      }
+    }
 
     const countBadge = document.getElementById('sidebar-leads-count');
     if (countBadge) countBadge.innerText = allLeads.length;
@@ -272,6 +296,15 @@ async function loadLeads() {
     applyLeadsFilters();
   } catch (err) {
     console.error('Erro ao carregar leads:', err);
+    // Fallback de cache offline
+    const cached = localStorage.getItem('mapscrapter_leads_cache');
+    if (cached) {
+      try {
+        allLeads = JSON.parse(cached);
+        updateTabCounts();
+        applyLeadsFilters();
+      } catch (e) {}
+    }
   }
 }
 
@@ -609,18 +642,26 @@ function renderTable(leads) {
       `;
     }
 
-    // 4. Endereço limpo
+    // 4. Endereço limpo e Links Diretos (Google Search e Google Maps)
     const cityDisplay = lead.city || 'Taubaté - SP';
     const addressDisplay = lead.address ? lead.address.substring(0, 36) + (lead.address.length > 36 ? '...' : '') : cityDisplay;
+    const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent((lead.name || '') + ' ' + (lead.city || 'Taubaté'))}`;
+    const mapsUrl = lead.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((lead.name || '') + ' ' + (lead.address || lead.city || 'Taubaté'))}`;
 
     tr.innerHTML = `
       <td><input type="checkbox" class="lead-check" value="${lead.id}" ${isChecked ? 'checked' : ''} onchange="toggleSelectLead('${lead.id}', this.checked)"></td>
       <td>
         <div class="company-cell">
-          <span class="company-name" onclick="openEditLeadModal('${lead.id}')" title="Clique para editar este lead">${lead.name}</span>
+          <div class="company-name-row">
+            <a href="${googleSearchUrl}" target="_blank" rel="noopener noreferrer" class="company-name-link" title="Pesquisar '${lead.name}' diretamente no Google">
+              ${lead.name} <i class="fa-brands fa-google text-blue google-search-icon" title="Abrir busca no Google"></i>
+            </a>
+          </div>
           <div class="company-meta-row">
             <span class="company-sub">${lead.niche || 'Geral'}</span>
-            <span class="company-city" title="${lead.address || cityDisplay}">📍 ${addressDisplay}</span>
+            <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="company-maps-link" title="Abrir localização no Google Maps">
+              📍 ${addressDisplay} <i class="fa-solid fa-arrow-up-right-from-square maps-ext-icon"></i>
+            </a>
           </div>
         </div>
       </td>
@@ -855,6 +896,10 @@ async function clearAllLeads() {
     const res = await fetch('/api/leads/clear-all', { method: 'POST' });
     const data = await res.json();
     if (data.success) {
+      localStorage.removeItem('mapscrapter_leads_cache');
+      localStorage.setItem('mapscrapter_user_cleared', 'true');
+      activeSessionMeta = { id: null, name: 'Tabela Vazia' };
+      updateActiveSessionHeaderUI();
       showToast('Base limpa com sucesso! Pronto para carregar nova planilha.');
       loadLeads();
     }
@@ -1077,6 +1122,7 @@ async function processUploadExecution() {
       body: JSON.stringify({
         fileContent: uploadFileContent,
         fileType: uploadFileType,
+        fileName: uploadFileName,
         defaultNiche,
         deduplicateOption
       })
@@ -1084,10 +1130,16 @@ async function processUploadExecution() {
 
     const data = await res.json();
     if (data.success) {
+      localStorage.removeItem('mapscrapter_user_cleared');
+      if (data.activeSession) {
+        activeSessionMeta = data.activeSession;
+        updateActiveSessionHeaderUI();
+      }
       closeUploadModal();
-      loadLeads();
+      await loadLeads();
       switchPage('leads');
-      showToast(`🎉 ${data.importedCount} novos leads importados! (${data.updatedCount} atualizados, ${data.skippedCount} duplicados ignorados)`);
+      const sessName = activeSessionMeta && activeSessionMeta.name ? activeSessionMeta.name : 'Sessão salva';
+      showToast(`🎉 ${data.importedCount} leads importados! Sessão "${sessName}" salva automaticamente.`);
     } else {
       showToast('Erro: ' + (data.error || 'Falha ao processar arquivo'));
     }
@@ -1318,10 +1370,16 @@ async function importFromGoogleSheets() {
 
     const data = await res.json();
     if (data.success) {
+      localStorage.removeItem('mapscrapter_user_cleared');
+      if (data.activeSession) {
+        activeSessionMeta = data.activeSession;
+        updateActiveSessionHeaderUI();
+      }
       closeUploadModal();
-      loadLeads();
+      await loadLeads();
       switchPage('leads');
-      showToast(`🎉 Planilha sincronizada! ${data.importedCount} novos leads adicionados (${data.updatedCount} atualizados).`);
+      const sessName = activeSessionMeta && activeSessionMeta.name ? activeSessionMeta.name : 'Google Planilhas';
+      showToast(`🎉 Planilha sincronizada! Sessão "${sessName}" salva automaticamente.`);
     } else {
       showToast('Erro: ' + (data.error || 'Falha ao sincronizar planilha'));
     }
@@ -1738,8 +1796,12 @@ async function confirmDeleteCurrentTable() {
     if (data.success) {
       allLeads = [];
       selectedLeadIds.clear();
-      applyFiltersAndRender();
-      updateSmartCounters();
+      localStorage.removeItem('mapscrapter_leads_cache');
+      localStorage.setItem('mapscrapter_user_cleared', 'true');
+      activeSessionMeta = { id: null, name: 'Tabela Vazia' };
+      updateActiveSessionHeaderUI();
+      applyLeadsFilters();
+      updateTabCounts();
       showToast('🗑️ Tabela de leads excluída com sucesso! Backup salvo.');
     } else {
       showToast('Erro ao excluir tabela: ' + (data.error || 'Erro desconhecido'));
@@ -1813,10 +1875,127 @@ async function searchContactForLead(id) {
 
 function exportLeadsCSV() {
   window.location.href = '/api/export-csv';
-  showToast('📥 Baixando arquivo CSV de leads...');
+  showToast('📥 Baixando arquivo CSV completo de leads (com links Google e Maps)...');
 }
 
 function exportLeadsJSON() {
   window.location.href = '/api/export-json';
-  showToast('📥 Baixando arquivo JSON de leads...');
+  showToast('📥 Baixando arquivo JSON de backup da sessão...');
+}
+
+function exportLeadsTSV() {
+  window.location.href = '/api/export-tsv';
+  showToast('📥 Baixando arquivo TSV para Google Planilhas...');
+}
+
+// Copiar Tabela de Leads para colar no Google Sheets via Ctrl+V
+async function copyTableForGoogleSheets() {
+  if (!allLeads || allLeads.length === 0) {
+    showToast('Nenhum lead disponível para copiar.');
+    return;
+  }
+
+  const headers = [
+    'Empresa', 'Nicho', 'Telefone', 'WhatsApp Raw', 'É Zap', 'Link WhatsApp',
+    'Melhor Canal', 'Nota Google', 'Avaliações', 'Site', 'Instagram',
+    'Tipo', 'Status', 'Score', 'Endereço', 'Cidade', 'Busca Google', 'Google Maps'
+  ];
+
+  let tsv = headers.join('\t') + '\n';
+  allLeads.forEach(l => {
+    const isZap = (l.isMobile || l.isWhatsapp) ? 'Sim' : 'Não';
+    const waLink = l.whatsappLink || (l.rawPhone ? `https://wa.me/${l.rawPhone.startsWith('55') ? l.rawPhone : '55' + l.rawPhone}` : '');
+    const googleSearch = `https://www.google.com/search?q=${encodeURIComponent((l.name || '') + ' ' + (l.city || 'Taubaté'))}`;
+    const maps = l.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((l.name || '') + ' ' + (l.address || l.city || 'Taubaté'))}`;
+
+    const row = [
+      l.name || '',
+      l.niche || '',
+      l.phone || l.number || '',
+      l.rawPhone || '',
+      isZap,
+      waLink,
+      l.bestContactChannel || '',
+      l.rating || '',
+      l.reviewCount || 0,
+      l.website || '',
+      l.instagram || '',
+      l.type || '',
+      l.status || '',
+      l.score || '',
+      l.address || '',
+      l.city || '',
+      googleSearch,
+      maps
+    ].map(v => ('' + v).replace(/\t/g, ' ').replace(/\r?\n/g, ' '));
+
+    tsv += row.join('\t') + '\n';
+  });
+
+  try {
+    await navigator.clipboard.writeText(tsv);
+    showToast(`📋 ${allLeads.length} leads copiados! Abra o Google Planilhas e aperte Ctrl+V.`);
+  } catch (err) {
+    showToast('Erro ao copiar dados para a área de transferência: ' + err.message);
+  }
+}
+
+// Modal para Webhook / Sincronização Externa (Google Sheets Apps Script / Zapier / Make / Form)
+function openSyncWebhookModal() {
+  const modal = document.getElementById('webhook-export-modal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    const input = document.getElementById('webhook-url-input');
+    const saved = localStorage.getItem('mapscrapter_webhook_url');
+    if (input && saved) input.value = saved;
+    const countEl = document.getElementById('webhook-leads-count');
+    if (countEl) countEl.innerText = allLeads.length;
+  }
+}
+
+function closeSyncWebhookModal() {
+  const modal = document.getElementById('webhook-export-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function sendLeadsToWebhook() {
+  const input = document.getElementById('webhook-url-input');
+  const url = input ? input.value.trim() : '';
+
+  if (!url || !url.startsWith('http')) {
+    showToast('Informe uma URL de Webhook válida (ex: Google Apps Script ou Make/Zapier).');
+    return;
+  }
+
+  localStorage.setItem('mapscrapter_webhook_url', url);
+
+  const btn = document.getElementById('btn-send-webhook');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Enviando...`;
+  }
+
+  showToast('🚀 Enviando leads para o Google Sheets / Webhook...');
+
+  try {
+    const res = await fetch('/api/export/webhook', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ webhookUrl: url })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || 'Dados exportados com sucesso!');
+      closeSyncWebhookModal();
+    } else {
+      showToast('Erro: ' + (data.error || 'Falha no envio'));
+    }
+  } catch (e) {
+    showToast('Erro de conexão ao enviar: ' + e.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Enviar Dados Agora`;
+    }
+  }
 }

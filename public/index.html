@@ -335,11 +335,14 @@
                 <i class="fa-solid fa-download"></i> Mais Exportações <i class="fa-solid fa-chevron-down" style="font-size:0.7rem"></i>
               </button>
               <div class="export-dropdown hidden" id="export-dropdown">
-                <a href="javascript:void(0)" onclick="exportLeadsCSV()"><i class="fa-solid fa-file-csv"></i> Exportar Leads (CSV)</a>
-                <a href="javascript:void(0)" onclick="exportLeadsJSON()"><i class="fa-solid fa-file-code"></i> Exportar Leads (JSON)</a>
+                <a href="javascript:void(0)" onclick="exportLeadsCSV()"><i class="fa-solid fa-file-csv text-green"></i> Exportar Leads (.CSV)</a>
+                <a href="javascript:void(0)" onclick="copyTableForGoogleSheets()"><i class="fa-solid fa-table text-blue"></i> Copiar Tabela (Colar no Google Sheets)</a>
+                <a href="javascript:void(0)" onclick="exportLeadsTSV()"><i class="fa-solid fa-file-excel text-green"></i> Baixar TSV (Google Planilhas)</a>
+                <a href="javascript:void(0)" onclick="openSyncWebhookModal()"><i class="fa-solid fa-paper-plane text-yellow"></i> Enviar p/ Google Sheets / Webhook</a>
+                <a href="javascript:void(0)" onclick="exportLeadsJSON()"><i class="fa-solid fa-file-code"></i> Exportar Backup (.JSON)</a>
                 <a href="/api/leads/numbers" target="_blank"><i class="fa-solid fa-phone"></i> Ver Números de API (JSON)</a>
-                <a href="javascript:void(0)" onclick="exportCurrentSessionFile('csv')"><i class="fa-solid fa-file-arrow-down"></i> Exportar Sessão Atual (CSV)</a>
-                <a href="javascript:void(0)" onclick="exportCurrentSessionFile('json')"><i class="fa-solid fa-file-arrow-down"></i> Exportar Sessão Atual (JSON)</a>
+                <a href="javascript:void(0)" onclick="exportCurrentSessionFile('csv')"><i class="fa-solid fa-file-arrow-down"></i> Exportar Sessão Atual (.CSV)</a>
+                <a href="javascript:void(0)" onclick="exportCurrentSessionFile('json')"><i class="fa-solid fa-file-arrow-down"></i> Exportar Sessão Atual (.JSON)</a>
               </div>
             </div>
           </div>
@@ -881,6 +884,47 @@
       <div class="modal-footer flex-between">
         <button class="btn-secondary" onclick="closeSessionsModal()">Fechar</button>
         <span class="author-credits-sm">Sessões salvas em <code>data/sessions.json</code></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ENVIAR PARA GOOGLE SHEETS / WEBHOOK / FORM -->
+  <div class="modal-backdrop hidden" id="webhook-export-modal">
+    <div class="modal-card">
+      <div class="modal-header flex-between">
+        <div class="modal-title-wrap">
+          <i class="fa-solid fa-cloud-arrow-up text-primary"></i>
+          <div>
+            <h3>Sincronizar com Google Planilhas / Formulário</h3>
+            <p>Envie toda a base (<span id="webhook-leads-count">0</span> leads) diretamente para o Google Sheets via Webhook ou Apps Script.</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" onclick="closeSyncWebhookModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body" style="gap:14px;">
+        <div class="form-group">
+          <label>URL do Webhook (Google Apps Script / Webhook / Make / n8n / Zapier):</label>
+          <input type="url" id="webhook-url-input" class="styled-input" placeholder="https://script.google.com/macros/s/.../exec">
+          <span style="font-size:0.75rem; color:#94a3b8; margin-top:5px; display:block;">
+            💡 Cole a URL de Webhook do seu Google Apps Script ou integrador para atualizar sua planilha do Google automaticamente.
+          </span>
+        </div>
+
+        <div style="background:#0f172a; padding:12px; border-radius:8px; border:1px solid #1e293b; font-size:0.8rem; color:#cbd5e1;">
+          <strong style="color:#60a5fa;"><i class="fa-solid fa-lightbulb"></i> Prefere colar manualmente?</strong>
+          <p style="margin:6px 0 8px 0;">Você também pode usar a função de cópia rápida formatada:</p>
+          <button class="btn-secondary" style="font-size:0.78rem;" onclick="copyTableForGoogleSheets()">
+            <i class="fa-solid fa-copy"></i> Copiar Tabela Pronta (Ctrl+V no Google Sheets)
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-footer flex-between">
+        <button class="btn-secondary" onclick="closeSyncWebhookModal()">Cancelar</button>
+        <button class="btn-primary-highlight" id="btn-send-webhook" onclick="sendLeadsToWebhook()">
+          <i class="fa-solid fa-paper-plane"></i> Enviar Dados Agora
+        </button>
       </div>
     </div>
   </div>
