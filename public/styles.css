@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   --bg-main: #0e1116;
   --bg-sidebar: #0a0d11;
   --bg-card: #141820;
@@ -6,10 +7,9 @@
   --bg-input: #12151b;
   --border-color: #232a36;
   --border-focus: #3b82f6;
-  --text-main: #f1f5f9;
   --text-main: #f8fafc;
-  --text-muted: #94a3b8; /* WCAG AA 5.8:1 contrast against dark background */
-  --text-dim: #94a3b8;   /* WCAG AA compliant */
+  --text-muted: #cbd5e1; /* Slate 300 - WCAG AAA contrast */
+  --text-dim: #94a3b8;   /* Slate 400 - WCAG AA compliant */
   --primary: #22c55e;
   --primary-glow: rgba(34, 197, 94, 0.25);
   --accent-orange: #f97316;
@@ -28,6 +28,10 @@
   box-sizing: border-box;
 }
 
+html, body {
+  color-scheme: dark;
+}
+
 /* WCAG 2.1 AA Focus Indicators & Keyboard Accessibility */
 button:focus-visible,
 input:focus-visible,
@@ -35,6 +39,20 @@ select:focus-visible,
 a:focus-visible {
   outline: 2px solid #38bdf8 !important;
   outline-offset: 2px !important;
+}
+
+/* Dark mode native dropdown styling across all selects */
+select,
+select option,
+select optgroup,
+input,
+textarea {
+  color-scheme: dark !important;
+}
+
+select option {
+  background-color: #0b111e !important;
+  color: #f8fafc !important;
 }
 
 body {
@@ -664,6 +682,15 @@ body {
   outline: none;
   cursor: pointer;
   font-family: inherit;
+  color-scheme: dark !important;
+}
+
+.custom-select-wrapper select option,
+.styled-select option {
+  background-color: #0b111e !important;
+  color: #f8fafc !important;
+  font-weight: 500;
+  padding: 8px 12px;
 }
 
 .styled-input {
@@ -967,8 +994,17 @@ body {
   padding: 6px 12px;
   border-radius: var(--radius-sm);
   font-size: 0.82rem;
+  font-weight: 600;
   outline: none;
   cursor: pointer;
+  color-scheme: dark !important;
+}
+
+.bulk-select option {
+  background-color: #0b111e !important;
+  color: #f8fafc !important;
+  font-weight: 500;
+  padding: 6px 10px;
 }
 
 .btn-bulk-delete {
@@ -1047,8 +1083,17 @@ body {
   padding: 9px 12px;
   border-radius: var(--radius-sm);
   font-size: 0.82rem;
+  font-weight: 600;
   outline: none;
   cursor: pointer;
+  color-scheme: dark !important;
+}
+
+.filter-select-box select option {
+  background-color: #0b111e !important;
+  color: #f8fafc !important;
+  padding: 8px 12px;
+  font-weight: 500;
 }
 
 .btn-scan {
@@ -1470,55 +1515,100 @@ body {
   color: #ffffff;
 }
 
-/* STATUS SELECT */
+/* STATUS SELECT (HIGH CONTRAST & WCAG AA COMPLIANT) */
 .status-pill-select {
   background-color: #141c28;
   border: 1px solid #263345;
   color: #ffffff;
-  padding: 6px 10px;
+  padding: 6px 12px;
   border-radius: 14px;
-  font-size: 0.79rem;
-  font-weight: 600;
+  font-size: 0.81rem;
+  font-weight: 700;
   outline: none;
   cursor: pointer;
-  min-width: 140px;
+  min-width: 155px;
+  color-scheme: dark !important;
+  transition: all 0.2s ease;
 }
 
 .status-pill-select.status-Novo {
   border-color: #3b82f6;
   color: #93c5fd;
-  background-color: rgba(59, 130, 246, 0.1);
+  background-color: rgba(59, 130, 246, 0.15);
 }
 
 .status-pill-select.status-Retornar-Contato {
-  border-color: #d97706;
-  color: #fcd34d;
-  background-color: rgba(217, 119, 6, 0.18);
-  font-weight: 700;
+  border-color: #f59e0b;
+  color: #fde047;
+  background-color: rgba(245, 158, 11, 0.2);
 }
 
 .status-pill-select.status-Em-Contato {
   border-color: #eab308;
   color: #fef08a;
-  background-color: rgba(234, 179, 8, 0.1);
+  background-color: rgba(234, 179, 8, 0.18);
 }
 
 .status-pill-select.status-Qualificado {
   border-color: #a855f7;
   color: #e9d5ff;
-  background-color: rgba(168, 85, 247, 0.1);
+  background-color: rgba(168, 85, 247, 0.15);
 }
 
 .status-pill-select.status-Fechado {
   border-color: #22c55e;
   color: #86efac;
-  background-color: rgba(34, 197, 94, 0.1);
+  background-color: rgba(34, 197, 94, 0.15);
 }
 
 .status-pill-select.status-Arquivado {
   border-color: #64748b;
   color: #cbd5e1;
-  background-color: rgba(100, 116, 139, 0.1);
+  background-color: rgba(100, 116, 139, 0.15);
+}
+
+/* OPÇÕES DENTRO DO DROPDOWN (100% NÍTIDAS, FUNDO ESCURO, NUNCA HERDA AMARELO EM FUNDO BRANCO) */
+.status-pill-select option {
+  background-color: #0b111e !important;
+  color: #f8fafc !important;
+  font-size: 0.86rem;
+  font-weight: 600;
+  padding: 10px 14px;
+}
+
+.status-pill-select option:checked {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+}
+
+.status-pill-select option[value="Novo"] {
+  background-color: #0b1325 !important;
+  color: #93c5fd !important;
+}
+
+.status-pill-select option[value="Retornar Contato"] {
+  background-color: #1a1506 !important;
+  color: #fde047 !important;
+}
+
+.status-pill-select option[value="Em Contato"] {
+  background-color: #1a1506 !important;
+  color: #fef08a !important;
+}
+
+.status-pill-select option[value="Qualificado"] {
+  background-color: #170d24 !important;
+  color: #e9d5ff !important;
+}
+
+.status-pill-select option[value="Fechado"] {
+  background-color: #091a10 !important;
+  color: #86efac !important;
+}
+
+.status-pill-select option[value="Arquivado"] {
+  background-color: #111827 !important;
+  color: #cbd5e1 !important;
 }
 
 /* SCORE CELL */
