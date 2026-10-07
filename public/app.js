@@ -262,6 +262,12 @@ async function executeRealScraper() {
 // LOAD LEADS FROM API WITH AUTO-PERSISTENCE
 async function loadLeads() {
   try {
+    // Purga proativa de cache legado contendo números falsos
+    const staleCache = localStorage.getItem('mapscrapter_leads_cache');
+    if (staleCache && (staleCache.includes('9122-5471') || staleCache.includes('9122-5472') || staleCache.includes('94074-7584'))) {
+      localStorage.removeItem('mapscrapter_leads_cache');
+    }
+
     const res = await fetch('/api/leads');
     allLeads = await res.json();
 
@@ -1057,15 +1063,37 @@ function parseAndPreviewUpload(content, type) {
       sampleRows.forEach(row => {
         const tr = document.createElement('tr');
         const keys = Object.keys(row);
-        const nameVal = row.title || row.name || row.nome || row.company || row[keys[0]] || 'Sem nome';
-        const phoneVal = row.phone || row.telefone || row.phoneNumber || '—';
-        const ratingVal = row.totalScore || row.rating || row.nota || row.stars || '5.0';
+        const nameVal = row.title || row.name || row.nome || row.company || row.xxVWCe || row[keys[0]] || 'Sem nome';
+
+        // Detecção fiel de telefone na prévia do arquivo enviado pelo usuário
+        let phoneVal = '—';
+        for (const k of keys) {
+          const lk = k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+          if (lk.includes('phone') || lk.includes('telef') || lk.includes('cel') || lk.includes('whats') || lk.includes('zap') || lk.includes('fone') || lk.includes('contat') || lk === 'tel' || lk === 'usdlk' || lk === 'csenbe') {
+            if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') {
+              phoneVal = String(row[k]).trim().replace(/\.0+$/, '');
+              break;
+            }
+          }
+        }
+        if (phoneVal === '—') {
+          for (const k of keys) {
+            const vStr = String(row[k] || '').trim().replace(/\.0+$/, '');
+            const digits = vStr.replace(/\D/g, '');
+            if (digits.length >= 8 && digits.length <= 13 && !vStr.includes('http') && !vStr.includes('@') && !vStr.includes('·')) {
+              phoneVal = vStr;
+              break;
+            }
+          }
+        }
+
+        const ratingVal = row.totalScore || row.rating || row.nota || row.stars || row.MW4etd || '5.0';
         const siteVal = row.website || row.site || row.url || '—';
-        const addrVal = row.address || row.endereco || row.full_address || '—';
+        const addrVal = row.address || row.endereco || row.full_address || row['W4Efsd 4'] || row['W4Efsd 3'] || '—';
 
         tr.innerHTML = `
           <td><strong>${nameVal}</strong></td>
-          <td>${phoneVal}</td>
+          <td>${phoneVal !== '—' ? `<span class="badge-success">${phoneVal}</span>` : '<span style="opacity:0.5">Sem telefone</span>'}</td>
           <td>⭐ ${ratingVal}</td>
           <td>${siteVal !== '—' ? 'Sim' : 'Não'}</td>
           <td>${addrVal.substring(0, 30)}...</td>
@@ -1851,26 +1879,12 @@ async function toggleRetornarContato(id) {
 }
 
 async function searchContactForLead(id) {
-  showToast('🔍 Buscando contato na web (DuckDuckGo)...');
-  try {
-    const res = await fetch('/api/leads/quick-scan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: [id] })
-    });
-    const data = await res.json();
-    if (data.success) {
-      await loadLeads();
-      const updated = allLeads.find(l => l.id === id);
-      if (updated && (updated.phone || updated.instagram)) {
-        showToast(`🎉 Encontrado! Tel: ${updated.phone || 'N/A'} | IG: ${updated.instagram || 'N/A'}`);
-      } else {
-        showToast('Nenhum telefone público encontrado automaticamente. Tente a busca no Google.');
-      }
-    }
-  } catch (e) {
-    showToast('Erro ao buscar contato: ' + e.message);
-  }
+  const lead = allLeads.find(l => l.id === id);
+  if (!lead) return;
+  const query = encodeURIComponent(`${lead.name} ${lead.city || 'Taubaté'} telefone whatsapp`);
+  const googleSearchUrl = `https://www.google.com/search?q=${query}`;
+  showToast(`🔍 Abrindo pesquisa no Google para conferir o telefone oficial de "${lead.name}"...`);
+  window.open(googleSearchUrl, '_blank');
 }
 
 function exportLeadsCSV() {

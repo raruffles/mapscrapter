@@ -212,43 +212,51 @@ function cleanOldBackups() {
   } catch (e) {}
 }
 
-// Phone formatter for Brazil & international
+// Phone formatter for Brazil & international (estritamente dados reais enviados pelo usuário)
 function formatPhoneNumber(phone) {
-  if (!phone) return { formatted: '', raw: '', isMobile: false, isWhatsapp: false };
-  const rawDigits = phone.toString().replace(/\D/g, '');
-  if (!rawDigits) return { formatted: phone.toString().trim(), raw: '', isMobile: false, isWhatsapp: false };
+  if (phone === null || phone === undefined || phone === '') return { formatted: '', raw: '', isMobile: false, isWhatsapp: false };
+  let str = phone.toString().trim().replace(/\.0+$/, '');
+  let rawDigits = str.replace(/\D/g, '');
+  if (!rawDigits) return { formatted: str, raw: '', isMobile: false, isWhatsapp: false };
 
   let raw = rawDigits;
+  // Handle leading zero like 012981112233
+  if ((raw.length === 11 || raw.length === 12) && raw.startsWith('0')) {
+    raw = raw.substring(1);
+  }
+  // Handle country code 55
   if ((raw.length === 12 || raw.length === 13) && raw.startsWith('55')) {
     raw = raw.substring(2);
   }
 
-  let formatted = phone.toString().trim();
+  let formatted = str;
   let isMobile = false;
   let isWhatsapp = false;
 
   if (raw.length === 11) {
     // (XX) 9XXXX-XXXX -> Celular / WhatsApp
     formatted = `(${raw.substring(0, 2)}) ${raw.substring(2, 7)}-${raw.substring(7)}`;
-    // Se o primeiro dígito após DDD é 9, é celular/zap
     isMobile = raw[2] === '9';
     isWhatsapp = isMobile;
   } else if (raw.length === 10) {
     // (XX) XXXX-XXXX
     formatted = `(${raw.substring(0, 2)}) ${raw.substring(2, 6)}-${raw.substring(6)}`;
-    // Se o dígito após DDD é 9 (ex: 17 9122-5471), é formato móvel/zap sem o 9 adicional
     if (raw[2] === '9') {
       isMobile = true;
       isWhatsapp = true;
     } else {
-      // Se começa com 2, 3, 4, 5 (ex: 12 3912-3456, 11 3345-6789), é estritamente telefone fixo
       isMobile = false;
       isWhatsapp = false;
     }
   } else if (raw.length === 8 || raw.length === 9) {
-    if (raw[0] === '9') {
+    if (raw.length === 9 && raw[0] === '9') {
+      formatted = `${raw.substring(0, 5)}-${raw.substring(5)}`;
       isMobile = true;
       isWhatsapp = true;
+    } else if (raw.length === 8) {
+      formatted = `${raw.substring(0, 4)}-${raw.substring(4)}`;
+      isMobile = false;
+      isWhatsapp = false;
     }
   }
 
@@ -395,12 +403,34 @@ function parseCSV(text) {
 function mapGoogleScraperRecord(item, customNiche = 'Geral') {
   const keys = Object.keys(item);
 
+  const cleanKey = (k) => {
+    return k.toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '');
+  };
+
   const findValue = (possibleNames) => {
-    for (const name of possibleNames) {
+    const cleanNames = possibleNames.map(cleanKey);
+    // 1. Exact cleaned match
+    for (const cn of cleanNames) {
       for (const k of keys) {
-        if (k.toLowerCase() === name.toLowerCase() || k.toLowerCase().replace(/[^a-z0-9]/g, '') === name.toLowerCase().replace(/[^a-z0-9]/g, '')) {
-          if (item[k] !== undefined && item[k] !== null && item[k] !== '') {
-            return item[k];
+        if (cleanKey(k) === cn) {
+          const val = item[k];
+          if (val !== undefined && val !== null && String(val).trim() !== '') {
+            return val;
+          }
+        }
+      }
+    }
+    // 2. Contains match
+    for (const cn of cleanNames) {
+      for (const k of keys) {
+        const ck = cleanKey(k);
+        if (ck.includes(cn) || cn.includes(ck)) {
+          const val = item[k];
+          if (val !== undefined && val !== null && String(val).trim() !== '') {
+            return val;
           }
         }
       }
@@ -456,14 +486,17 @@ function mapGoogleScraperRecord(item, customNiche = 'Geral') {
   // Website / Url
   const websiteRaw = findValue(['website', 'site', 'url', 'web', 'Site', 'Url']);
 
-  // Phone / Telefone / WhatsApp / API Number mapping
+  // Phone / Telefone / WhatsApp / API Number mapping - estritamente baseado no arquivo enviado pelo usuário
   let phoneVal = findValue([
     'number', 'numero', 'phone_number', 'phoneNumber', 'phone', 'telephone',
     'formatted_phone_number', 'formattedPhoneNumber', 'international_phone_number', 'internationalPhoneNumber',
     'national_phone_number', 'nationalPhoneNumber', 'telefone', 'contato', 'tel', 'contact_phone',
     'celular', 'whatsapp', 'whats', 'zap', 'mobile', 'cel', 'tel_contato', 'phone1', 'telefone1',
     'phone_1', 'telefone_1', 'fone', 'tel_fixo', 'telefone_fixo', 'whatsapp_number', 'wa_number',
-    'contact_number', 'contactNumber', 'api_number', 'caller_id'
+    'contact_number', 'contactNumber', 'api_number', 'caller_id', 'telefonewhatsapp', 'contatowhatsapp',
+    'telefonecelular', 'telcel', 'celularwhatsapp', 'whatsapptelefone', 'numerodetelefone', 'numerodecontato',
+    'numerodewhatsapp', 'telefones', 'phones', 'numbers', 'contatos', 'usdlk', 'csenbe', 'telcomercial',
+    'telefonecomercial', 'telfixo'
   ]);
 
   // Instagram raw
@@ -476,14 +509,17 @@ function mapGoogleScraperRecord(item, customNiche = 'Geral') {
 
   const checkUrl = (urlStr) => {
     if (!urlStr) return;
-    const cleanUrl = urlStr.trim();
+    const cleanUrl = urlStr.toString().trim();
     if (cleanUrl.includes('instagram.com/') || cleanUrl.includes('instagr.am/')) {
       const match = cleanUrl.match(/instagram\.com\/([a-zA-Z0-9_\.]+)/i) || cleanUrl.match(/instagr\.am\/([a-zA-Z0-9_\.]+)/i);
       if (match && !instagram) instagram = '@' + match[1].replace(/\/$/, '');
-      // O site informado é apenas o Instagram da empresa - não tratar como site oficial próprio
       return;
     } else if (cleanUrl.includes('wa.me/') || cleanUrl.includes('api.whatsapp.com/')) {
       if (!whatsappLink) whatsappLink = cleanUrl;
+      const waDigitsMatch = cleanUrl.match(/(?:wa\.me\/|phone=)(\d+)/i);
+      if (waDigitsMatch && !phoneVal) {
+        phoneVal = waDigitsMatch[1];
+      }
       return;
     } else if (!cleanUrl.includes('google.com/maps')) {
       if (!website) {
@@ -494,28 +530,55 @@ function mapGoogleScraperRecord(item, customNiche = 'Geral') {
 
   if (websiteRaw) checkUrl(websiteRaw);
   if (instagramRaw) {
-    if (instagramRaw.startsWith('@')) instagram = instagramRaw;
+    if (typeof instagramRaw === 'string' && instagramRaw.startsWith('@')) instagram = instagramRaw;
     else checkUrl(instagramRaw);
   }
 
   // Deep Scan across all columns for phone numbers or WhatsApp links if not explicitly matched
-  for (const k of keys) {
-    const val = item[k];
-    if (val && typeof val === 'string') {
-      const trimmedVal = val.trim();
+  if (!phoneVal) {
+    for (const k of keys) {
+      const rawVal = item[k];
+      if (rawVal === undefined || rawVal === null) continue;
+      const strVal = String(rawVal).trim().replace(/\.0+$/, '');
+      if (!strVal || strVal === '·' || strVal === '') continue;
+
       // Check for WhatsApp links
-      if (trimmedVal.includes('wa.me/') || trimmedVal.includes('api.whatsapp.com/send')) {
-        checkUrl(trimmedVal);
-        const waDigitsMatch = trimmedVal.match(/(?:wa\.me\/|phone=)(\d+)/i);
-        if (waDigitsMatch && !phoneVal) {
+      if (strVal.includes('wa.me/') || strVal.includes('api.whatsapp.com/send')) {
+        checkUrl(strVal);
+        const waDigitsMatch = strVal.match(/(?:wa\.me\/|phone=)(\d+)/i);
+        if (waDigitsMatch) {
           phoneVal = waDigitsMatch[1];
+          break;
         }
       }
-      // Check if value itself looks like a phone number
-      if (!phoneVal && trimmedVal.length >= 8 && trimmedVal.length <= 25) {
-        const phoneRegex = /(?:\+?55\s?)?(?:\(?([1-9]{2})\)?\s?)(?:9\s?\d{4}[-\s]?\d{4}|\d{4}[-\s]?\d{4})/;
-        if (phoneRegex.test(trimmedVal) && !trimmedVal.includes('http') && !trimmedVal.includes('data=') && !trimmedVal.includes('@') && !trimmedVal.includes('·')) {
-          phoneVal = trimmedVal;
+
+      // Check for tel: link
+      if (strVal.startsWith('tel:')) {
+        phoneVal = strVal.replace('tel:', '').trim();
+        break;
+      }
+
+      const ck = cleanKey(k);
+      const isPhoneCol = ck.includes('phone') || ck.includes('telef') || ck.includes('cel') || 
+                         ck.includes('whats') || ck.includes('zap') || ck.includes('fone') || 
+                         ck.includes('contat') || ck === 'tel' || ck === 'usdlk';
+
+      const digitsOnly = strVal.replace(/\D/g, '');
+      if (digitsOnly.length >= 8 && digitsOnly.length <= 14) {
+        if (!strVal.includes('http') && !strVal.includes('data=') && !strVal.includes('@') && !strVal.includes('·')) {
+          if (isPhoneCol) {
+            phoneVal = strVal;
+            break;
+          }
+          const phoneRegex = /(?:\+?55\s?)?(?:\(?0?[1-9]{2}\)?\s?)(?:9\s?\d{4}[-\s]?\d{4}|\d{4}[-\s]?\d{4})/;
+          if (phoneRegex.test(strVal)) {
+            phoneVal = strVal;
+            break;
+          }
+          if ((digitsOnly.length === 10 || digitsOnly.length === 11) && !digitsOnly.startsWith('00') && !digitsOnly.startsWith('19') && !digitsOnly.startsWith('20')) {
+            phoneVal = strVal;
+            break;
+          }
         }
       }
     }
@@ -853,19 +916,46 @@ app.post('/api/leads/upload', (req, res) => {
 
       if (existingIdx !== -1) {
         if (deduplicateOption === 'update') {
+          const userPhone = mappedLead.hasPhone ? mappedLead.phone : '';
+          const userRawPhone = mappedLead.hasPhone ? mappedLead.rawPhone : '';
+          const userIsMobile = mappedLead.hasPhone ? mappedLead.isMobile : false;
+          const userIsWhatsapp = mappedLead.hasPhone ? mappedLead.isWhatsapp : false;
+          const userWaLink = mappedLead.hasPhone ? mappedLead.whatsappLink : null;
+
+          const existingPhone = currentLeads[existingIdx].phone || '';
+          const isExistingFake = existingPhone.includes('9122-547');
+          const cleanExistingPhone = isExistingFake ? '' : existingPhone;
+          const cleanExistingRaw = isExistingFake ? '' : (currentLeads[existingIdx].rawPhone || '');
+
+          const finalPhone = userPhone || cleanExistingPhone;
+          const finalRaw = userRawPhone || cleanExistingRaw;
+          const finalIsMobile = userPhone ? userIsMobile : (!isExistingFake && currentLeads[existingIdx].isMobile);
+          const finalIsWhatsapp = userPhone ? userIsWhatsapp : (!isExistingFake && currentLeads[existingIdx].isWhatsapp);
+          const finalWaLink = userPhone ? userWaLink : (!isExistingFake ? currentLeads[existingIdx].whatsappLink : null);
+
           currentLeads[existingIdx] = {
             ...currentLeads[existingIdx],
-            phone: mappedLead.phone || currentLeads[existingIdx].phone,
-            rawPhone: mappedLead.rawPhone || currentLeads[existingIdx].rawPhone,
+            phone: finalPhone,
+            rawPhone: finalRaw,
+            number: finalPhone,
+            phoneNumber: finalPhone,
+            rawNumber: finalRaw,
+            whatsappNumber: finalIsWhatsapp ? finalRaw : '',
+            isMobile: finalIsMobile,
+            isWhatsapp: finalIsWhatsapp,
+            whatsappLink: finalWaLink,
+            hasPhone: !!finalPhone,
             rating: mappedLead.rating || currentLeads[existingIdx].rating,
             reviewCount: mappedLead.reviewCount || currentLeads[existingIdx].reviewCount,
+            address: mappedLead.address !== 'Endereço não informado' ? mappedLead.address : currentLeads[existingIdx].address,
+            city: mappedLead.city || currentLeads[existingIdx].city,
             website: mappedLead.website || currentLeads[existingIdx].website,
             instagram: mappedLead.instagram || currentLeads[existingIdx].instagram,
             googleMapsUrl: mappedLead.googleMapsUrl || currentLeads[existingIdx].googleMapsUrl,
             imageUrl: mappedLead.imageUrl || currentLeads[existingIdx].imageUrl,
-            bestContactChannel: mappedLead.bestContactChannel || currentLeads[existingIdx].bestContactChannel,
+            bestContactChannel: mappedLead.hasPhone ? mappedLead.bestContactChannel : determineBestContactChannel(!!finalPhone, finalIsMobile, !!(mappedLead.instagram || currentLeads[existingIdx].instagram), !!(mappedLead.website || currentLeads[existingIdx].website)),
             type: mappedLead.type || currentLeads[existingIdx].type,
-            score: mappedLead.score || currentLeads[existingIdx].score,
+            score: mappedLead.score || calculateLeadScore(!!finalPhone, !!(mappedLead.website || currentLeads[existingIdx].website), !!(mappedLead.instagram || currentLeads[existingIdx].instagram), mappedLead.rating || currentLeads[existingIdx].rating, mappedLead.reviewCount || currentLeads[existingIdx].reviewCount, finalIsMobile),
             updatedAt: new Date().toISOString()
           };
           updatedCount++;
@@ -1029,8 +1119,11 @@ app.post('/api/leads/quick-scan', async (req, res) => {
     try {
       let foundSomething = false;
 
-      // STEP 1: If lead already has a website, inspect the website directly for WhatsApp, Telefone and Instagram
-      if (lead.website && (!lead.hasPhone || !lead.hasInstagram)) {
+      // REGRA: NUNCA inventar ou extrair telefones de buscas web/snippets.
+      // Telefones são estritamente originados dos dados enviados pelo usuário na planilha.
+
+      // STEP 1: Se o lead já possui website, inspeciona apenas para Instagram (se faltar)
+      if (lead.website && !lead.hasInstagram) {
         try {
           const siteRes = await fetch(lead.website, {
             headers: {
@@ -1041,35 +1134,7 @@ app.post('/api/leads/quick-scan', async (req, res) => {
           if (siteRes.ok) {
             const siteHtml = await siteRes.text();
 
-            // WhatsApp link in website
-            if (!lead.hasPhone) {
-              const siteWa = siteHtml.match(/wa\.me\/(?:55)?(\d{10,11})/i) || siteHtml.match(/api\.whatsapp\.com\/send\?phone=(?:55)?(\d{10,11})/i);
-              if (siteWa) {
-                const raw = siteWa[1];
-                lead.rawPhone = raw;
-                const pData = formatPhoneNumber(raw);
-                lead.phone = pData.formatted;
-                lead.isMobile = true;
-                lead.hasPhone = true;
-                lead.whatsappLink = `https://wa.me/${raw.startsWith('55') ? raw : '55' + raw}`;
-                foundSomething = true;
-              } else {
-                // Check tel: link
-                const siteTel = siteHtml.match(/href=["']tel:([^"']+)["']/i);
-                if (siteTel) {
-                  const pData = formatPhoneNumber(siteTel[1]);
-                  if (pData.raw && pData.raw.length >= 10) {
-                    lead.phone = pData.formatted;
-                    lead.rawPhone = pData.raw;
-                    lead.isMobile = pData.isMobile;
-                    lead.hasPhone = true;
-                    foundSomething = true;
-                  }
-                }
-              }
-            }
-
-            // Instagram in website
+            // Instagram no website
             if (!lead.instagram) {
               const siteInsta = siteHtml.match(/instagram\.com\/([a-zA-Z0-9_\.]{3,30})/i);
               if (siteInsta && !['p', 'explore', 'reels', 'stories'].includes(siteInsta[1].toLowerCase())) {
@@ -1084,10 +1149,10 @@ app.post('/api/leads/quick-scan', async (req, res) => {
         }
       }
 
-      // STEP 2: DuckDuckGo Search for missing phone, whatsapp, instagram, or site
-      if (!lead.hasPhone || !lead.hasInstagram || !lead.hasWebsite) {
+      // STEP 2: DuckDuckGo Search apenas para Instagram ou Website faltante (NUNCA telefone)
+      if (!lead.hasInstagram || !lead.hasWebsite) {
         const cleanName = lead.name.replace(/[^a-zA-Z0-9\s]/g, '').trim();
-        const query = `${cleanName} ${lead.city || ''} telefone whatsapp instagram`;
+        const query = `${cleanName} ${lead.city || ''} instagram site oficial`;
         const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
 
         const response = await fetch(searchUrl, {
@@ -1108,38 +1173,6 @@ app.post('/api/leads/quick-scan', async (req, res) => {
               lead.instagram = '@' + instaMatch[1];
               lead.hasInstagram = true;
               foundSomething = true;
-            }
-          }
-
-          // 2. Look for WhatsApp link
-          if (!lead.hasPhone) {
-            const waMatch = html.match(/wa\.me\/(?:55)?(\d{10,11})/i) || html.match(/api\.whatsapp\.com\/send\?phone=(?:55)?(\d{10,11})/i);
-            if (waMatch) {
-              const raw = waMatch[1];
-              lead.rawPhone = raw;
-              const phoneData = formatPhoneNumber(raw);
-              lead.phone = phoneData.formatted;
-              lead.isMobile = true;
-              lead.hasPhone = true;
-              lead.whatsappLink = `https://wa.me/${raw.startsWith('55') ? raw : '55' + raw}`;
-              foundSomething = true;
-            } else {
-              // Look for Brazilian phone in snippets
-              const phoneMatches = html.match(/(?:\(?([1-9]{2})\)?\s?)(?:9\s?\d{4}[-\s]?\d{4}|\d{4}[-\s]?\d{4})/g);
-              if (phoneMatches && phoneMatches.length > 0) {
-                // Find first valid phone with 10 or 11 digits
-                for (const pm of phoneMatches) {
-                  const pData = formatPhoneNumber(pm);
-                  if (pData.raw && (pData.raw.length === 10 || pData.raw.length === 11 || pData.raw.length === 12 || pData.raw.length === 13)) {
-                    lead.phone = pData.formatted;
-                    lead.rawPhone = pData.raw;
-                    lead.isMobile = pData.isMobile;
-                    lead.hasPhone = true;
-                    foundSomething = true;
-                    break;
-                  }
-                }
-              }
             }
           }
 

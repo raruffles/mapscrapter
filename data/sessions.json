@@ -1,9 +1,9 @@
 [
   {
     "id": "sess-default",
-    "name": "Academias - Taubaté SP",
-    "niche": "Academia",
-    "city": "Taubaté - SP",
+    "name": "teste",
+    "niche": "Google Scraper",
+    "city": "Rua 1",
     "leads": [
       {
         "id": "lead-1791219573740-a315n4",
@@ -28,10 +28,15 @@
         "bestContactChannel": "instagram",
         "type": "Site bom",
         "status": "Novo",
-        "score": 85,
+        "score": 82,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.827Z",
-        "updatedAt": "2026-10-05T17:00:08.525Z"
+        "updatedAt": "2026-10-07T15:36:04.624Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573828-73ga6i",
@@ -56,10 +61,15 @@
         "bestContactChannel": "instagram",
         "type": "Site bom",
         "status": "Novo",
-        "score": 85,
+        "score": 82,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.828Z",
-        "updatedAt": "2026-10-05T17:00:09.243Z"
+        "updatedAt": "2026-10-07T15:36:04.625Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573828-c6cudw",
@@ -83,11 +93,16 @@
         "hasInstagram": false,
         "bestContactChannel": "maps",
         "type": "Sem presença",
-        "status": "Novo",
-        "score": 80,
+        "status": "Qualificado",
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.828Z",
-        "updatedAt": "2026-10-05T17:00:09.301Z"
+        "updatedAt": "2026-10-07T15:36:04.625Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573838-n5omyx",
@@ -112,9 +127,15 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.838Z"
+        "createdAt": "2026-10-05T16:59:33.838Z",
+        "updatedAt": "2026-10-07T15:36:04.625Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573839-328cws",
@@ -138,10 +159,16 @@
         "hasInstagram": false,
         "bestContactChannel": "maps",
         "type": "Sem presença",
-        "status": "Novo",
-        "score": 85,
+        "status": "Arquivado",
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.839Z"
+        "createdAt": "2026-10-05T16:59:33.839Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573839-rv2q48",
@@ -165,10 +192,16 @@
         "hasInstagram": false,
         "bestContactChannel": "maps",
         "type": "Sem presença",
-        "status": "Novo",
-        "score": 85,
+        "status": "Em Contato",
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.839Z"
+        "createdAt": "2026-10-05T16:59:33.839Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573840-l08r2r",
@@ -193,9 +226,15 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.840Z"
+        "createdAt": "2026-10-05T16:59:33.840Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573840-doa2th",
@@ -219,10 +258,16 @@
         "hasInstagram": false,
         "bestContactChannel": "maps",
         "type": "Sem presença",
-        "status": "Novo",
-        "score": 85,
+        "status": "Em Contato",
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.840Z"
+        "createdAt": "2026-10-05T16:59:33.840Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573841-lfwz0k",
@@ -247,9 +292,15 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.841Z"
+        "createdAt": "2026-10-05T16:59:33.841Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573841-n1kovt",
@@ -273,10 +324,16 @@
         "hasInstagram": false,
         "bestContactChannel": "maps",
         "type": "Sem presença",
-        "status": "Novo",
-        "score": 85,
+        "status": "Em Contato",
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.841Z"
+        "createdAt": "2026-10-05T16:59:33.841Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573841-tf4k4z",
@@ -301,9 +358,15 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.841Z"
+        "createdAt": "2026-10-05T16:59:33.841Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573841-xy9jq0",
@@ -328,9 +391,15 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.841Z"
+        "createdAt": "2026-10-05T16:59:33.841Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573842-ne8a0k",
@@ -355,9 +424,15 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.842Z"
+        "createdAt": "2026-10-05T16:59:33.842Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573856-bw466w",
@@ -382,9 +457,15 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.856Z"
+        "createdAt": "2026-10-05T16:59:33.856Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573857-6nby7l",
@@ -408,10 +489,16 @@
         "hasInstagram": false,
         "bestContactChannel": "maps",
         "type": "Sem presença",
-        "status": "Novo",
-        "score": 85,
+        "status": "Em Contato",
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.857Z"
+        "createdAt": "2026-10-05T16:59:33.857Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573857-royd85",
@@ -435,10 +522,16 @@
         "hasInstagram": false,
         "bestContactChannel": "maps",
         "type": "Sem presença",
-        "status": "Novo",
-        "score": 85,
+        "status": "Arquivado",
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.857Z"
+        "createdAt": "2026-10-05T16:59:33.857Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573857-9vsm0e",
@@ -463,9 +556,15 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.857Z"
+        "createdAt": "2026-10-05T16:59:33.857Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573858-1ingzq",
@@ -490,9 +589,15 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.858Z"
+        "createdAt": "2026-10-05T16:59:33.858Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573864-k0r9ax",
@@ -517,9 +622,15 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.864Z"
+        "createdAt": "2026-10-05T16:59:33.864Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573879-ayexon",
@@ -544,9 +655,15 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
-        "createdAt": "2026-10-05T16:59:33.879Z"
+        "createdAt": "2026-10-05T16:59:33.879Z",
+        "updatedAt": "2026-10-07T15:36:04.626Z",
+        "isWhatsapp": false,
+        "number": "",
+        "phoneNumber": "",
+        "rawNumber": "",
+        "whatsappNumber": ""
       },
       {
         "id": "lead-1791219573879-412m14",
@@ -571,7 +688,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.879Z"
       },
@@ -598,7 +715,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.880Z"
       },
@@ -625,7 +742,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.880Z"
       },
@@ -652,7 +769,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.887Z"
       },
@@ -679,7 +796,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.888Z"
       },
@@ -706,7 +823,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.888Z"
       },
@@ -733,7 +850,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.894Z"
       },
@@ -760,7 +877,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.895Z"
       },
@@ -787,7 +904,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.914Z"
       },
@@ -814,7 +931,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.914Z"
       },
@@ -841,7 +958,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.914Z"
       },
@@ -868,7 +985,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.915Z"
       },
@@ -895,7 +1012,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.915Z"
       },
@@ -922,7 +1039,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.915Z"
       },
@@ -949,7 +1066,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.916Z"
       },
@@ -976,7 +1093,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.916Z"
       },
@@ -1003,7 +1120,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.916Z"
       },
@@ -1030,7 +1147,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.917Z"
       },
@@ -1057,7 +1174,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.917Z"
       },
@@ -1084,7 +1201,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.934Z"
       },
@@ -1111,7 +1228,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.935Z"
       },
@@ -1138,7 +1255,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.935Z"
       },
@@ -1165,7 +1282,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.935Z"
       },
@@ -1192,7 +1309,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.935Z"
       },
@@ -1219,7 +1336,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.935Z"
       },
@@ -1246,7 +1363,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.936Z"
       },
@@ -1273,7 +1390,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.936Z"
       },
@@ -1300,7 +1417,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.938Z"
       },
@@ -1327,7 +1444,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.939Z"
       },
@@ -1354,7 +1471,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 65,
+        "score": 81,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.939Z"
       },
@@ -1381,7 +1498,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.939Z"
       },
@@ -1408,7 +1525,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.940Z"
       },
@@ -1435,7 +1552,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.940Z"
       },
@@ -1462,7 +1579,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 80,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.940Z"
       },
@@ -1489,7 +1606,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.944Z"
       },
@@ -1516,7 +1633,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.946Z"
       },
@@ -1543,7 +1660,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.946Z"
       },
@@ -1570,7 +1687,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.946Z"
       },
@@ -1597,7 +1714,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 65,
+        "score": 81,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.947Z"
       },
@@ -1624,7 +1741,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.947Z"
       },
@@ -1651,7 +1768,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.947Z"
       },
@@ -1678,7 +1795,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.947Z"
       },
@@ -1705,7 +1822,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.947Z"
       },
@@ -1732,7 +1849,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.948Z"
       },
@@ -1759,7 +1876,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.948Z"
       },
@@ -1786,7 +1903,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.954Z"
       },
@@ -1813,7 +1930,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.954Z"
       },
@@ -1840,7 +1957,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 65,
+        "score": 80,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.954Z"
       },
@@ -1867,7 +1984,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.955Z"
       },
@@ -1894,7 +2011,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.955Z"
       },
@@ -1921,7 +2038,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.955Z"
       },
@@ -1948,7 +2065,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 55,
+        "score": 74,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.955Z"
       },
@@ -1975,7 +2092,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.962Z"
       },
@@ -2002,7 +2119,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.962Z"
       },
@@ -2029,7 +2146,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.963Z"
       },
@@ -2056,7 +2173,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.963Z"
       },
@@ -2083,7 +2200,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 65,
+        "score": 81,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.963Z"
       },
@@ -2110,7 +2227,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.964Z"
       },
@@ -2137,7 +2254,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.964Z"
       },
@@ -2164,7 +2281,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.964Z"
       },
@@ -2191,7 +2308,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.974Z"
       },
@@ -2218,7 +2335,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.974Z"
       },
@@ -2245,7 +2362,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.974Z"
       },
@@ -2272,7 +2389,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.974Z"
       },
@@ -2299,7 +2416,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.974Z"
       },
@@ -2326,7 +2443,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.975Z"
       },
@@ -2353,7 +2470,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.975Z"
       },
@@ -2380,7 +2497,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.976Z"
       },
@@ -2407,7 +2524,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.987Z"
       },
@@ -2434,7 +2551,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.987Z"
       },
@@ -2461,7 +2578,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 80,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.987Z"
       },
@@ -2488,7 +2605,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.987Z"
       },
@@ -2515,7 +2632,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.988Z"
       },
@@ -2542,7 +2659,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.988Z"
       },
@@ -2569,7 +2686,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.988Z"
       },
@@ -2596,7 +2713,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.989Z"
       },
@@ -2623,7 +2740,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.990Z"
       },
@@ -2650,7 +2767,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.991Z"
       },
@@ -2677,7 +2794,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.991Z"
       },
@@ -2704,7 +2821,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.991Z"
       },
@@ -2731,7 +2848,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.991Z"
       },
@@ -2758,7 +2875,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.994Z"
       },
@@ -2785,7 +2902,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.995Z"
       },
@@ -2812,7 +2929,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.998Z"
       },
@@ -2839,7 +2956,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.999Z"
       },
@@ -2866,7 +2983,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 65,
+        "score": 81,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.999Z"
       },
@@ -2893,7 +3010,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.999Z"
       },
@@ -2920,7 +3037,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:33.999Z"
       },
@@ -2947,7 +3064,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 80,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:34.000Z"
       },
@@ -2974,7 +3091,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:34.000Z"
       },
@@ -3001,7 +3118,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:34.004Z"
       },
@@ -3028,7 +3145,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:34.004Z"
       },
@@ -3055,7 +3172,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:34.005Z"
       },
@@ -3082,7 +3199,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:34.005Z"
       },
@@ -3109,7 +3226,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 85,
+        "score": 90,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:34.005Z"
       },
@@ -3136,7 +3253,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:34.005Z"
       },
@@ -3163,7 +3280,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 65,
+        "score": 81,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:34.006Z"
       },
@@ -3190,7 +3307,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:34.012Z"
       },
@@ -3217,7 +3334,7 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 75,
+        "score": 87,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:34.012Z"
       },
@@ -3244,12 +3361,12 @@
         "bestContactChannel": "maps",
         "type": "Sem presença",
         "status": "Novo",
-        "score": 70,
+        "score": 84,
         "notes": "Captado via Google Maps em 05/10/2026",
         "createdAt": "2026-10-05T16:59:34.013Z"
       }
     ],
     "createdAt": "2026-10-05T17:56:59.895Z",
-    "updatedAt": "2026-10-05T17:56:59.896Z"
+    "updatedAt": "2026-10-07T15:38:25.368Z"
   }
 ]
